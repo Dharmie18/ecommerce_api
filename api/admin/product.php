@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
 require '../../config/db.php';
+require '../../config/jwt.php';
+
+requireAdmin($conn); 
 
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);

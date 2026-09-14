@@ -1,17 +1,14 @@
 <?php
 header('Content-Type: application/json');
 require '../../config/db.php';
+require '../../config/jwt.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === 'GET') {
-    $user_id = $_GET['user_id'] ?? '';
+// Identity now comes ONLY from the verified token
+$user_id = getAuthenticatedUserId();
 
-    if (empty($user_id)) {
-        http_response_code(400);
-        echo json_encode(["error" => "user_id is required"]);
-        exit;
-    }
+if ($method === 'GET') {
 
     $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, created_at FROM Users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
@@ -29,14 +26,25 @@ if ($method === 'GET') {
 } elseif ($method === 'PUT') {
     $data = json_decode(file_get_contents("php://input"), true);
 
-    $user_id    = $data['user_id'] ?? '';
     $first_name = $data['first_name'] ?? '';
     $last_name  = $data['last_name'] ?? '';
     $email      = $data['email'] ?? '';
 
-    if (empty($user_id) || empty($first_name) || empty($email)) {
+    if (empty($first_name) || empty($email)) {
         http_response_code(400);
-        echo json_encode(["error" => "user_id, first_name, and email are required"]);
+        echo json_encode(["error" => "first_name and email are required"]);
+        exit;
+    }
+
+    if (!preg_match("/^[a-zA-Z\s\-]+$/", $first_name)) {
+        http_response_code(400);
+        echo json_encode(["error" => "First name must contain letters only"]);
+        exit;
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(["error" => "Invalid email format"]);
         exit;
     }
 

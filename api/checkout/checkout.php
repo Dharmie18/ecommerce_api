@@ -1,32 +1,43 @@
 <?php
 header('Content-Type: application/json');
 require '../../config/db.php';
+require '../../config/jwt.php';
+
+// So the identity comes from the verified token 
+$user_id = getAuthenticatedUserId();
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-$user_id          = $data['user_id'] ?? '';
 $shipping_address = $data['shipping_address'] ?? '';
-$items            = $data['items'] ?? [];        // array of {product_id, quantity}
+$items            = $data['items'] ?? [];
 $payment_method   = $data['payment_method'] ?? '';
 
-// Validate required fields
-if (empty($user_id) || empty($shipping_address) || empty($items) || empty($payment_method)) {
+if (empty($shipping_address) || empty($items) || empty($payment_method)) {
     http_response_code(400);
-    echo json_encode(["error" => "user_id, shipping_address, items, and payment_method are required"]);
+    echo json_encode(["error" => "shipping_address, items, and payment_method are required"]);
     exit;
 }
 
-// Start a transaction: everything below succeeds together, or nothing does
+$validMethods = ['Credit Card', 'PayPal', 'Crypto', 'Bank Transfer'];
+if (!in_array($payment_method, $validMethods)) {
+    http_response_code(400);
+    echo json_encode(["error" => "payment_method must be one of: " . implode(', ', $validMethods)]);
+    exit;
+}
+
 $conn->begin_transaction();
 
 try {
     $total_amount = 0;
     $orderItemsData = [];
 
-    // Step 1: Check stock and calculate total
     foreach ($items as $item) {
-        $product_id = $item['product_id'];
-        $quantity   = $item['quantity'];
+        $product_id = $item['product_id'] ?? null;
+        $quantity   = $item['quantity'] ?? null;
+
+        if (!$product_id || !$quantity || $quantity <= 0) {
+            throw new Exception("Each item needs a valid product_id and quantity");
+        }
 
         $stmt = $conn->prepare("SELECT price, stock_quantity FROM Products WHERE product_id = ?");
         $stmt->bind_param("i", $product_id);
@@ -50,13 +61,11 @@ try {
         ];
     }
 
-    // Step 2: Create the Order
     $stmt = $conn->prepare("INSERT INTO Orders (user_id, total_amount, shipping_address) VALUES (?, ?, ?)");
     $stmt->bind_param("ids", $user_id, $total_amount, $shipping_address);
     $stmt->execute();
     $order_id = $stmt->insert_id;
 
-    // Step 3: Create Order_Items and reduce stock
     foreach ($orderItemsData as $orderItem) {
         $stmt = $conn->prepare("INSERT INTO Order_Items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiid", $order_id, $orderItem['product_id'], $orderItem['quantity'], $orderItem['unit_price']);
@@ -67,12 +76,10 @@ try {
         $stmt->execute();
     }
 
-    // Step 4: Record the Payment
     $stmt = $conn->prepare("INSERT INTO Payments (order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'Completed')");
     $stmt->bind_param("ids", $order_id, $total_amount, $payment_method);
     $stmt->execute();
 
-    // All good — save everything permanently
     $conn->commit();
 
     echo json_encode([
@@ -82,7 +89,6 @@ try {
     ]);
 
 } catch (Exception $e) {
-    // Something failed — undo everything from this transaction
     $conn->rollback();
     http_response_code(500);
     echo json_encode(["error" => "Checkout failed: " . $e->getMessage()]);

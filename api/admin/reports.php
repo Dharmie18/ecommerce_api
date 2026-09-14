@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
 require '../../config/db.php';
+require '../../config/jwt.php';
+
+requireAdmin($conn); 
 
 $requestUri = $_SERVER['REQUEST_URI'];
 $parts = explode('reports.php', $requestUri);
@@ -8,7 +11,7 @@ $path = isset($parts[1]) ? trim($parts[1], '/') : '';
 $reportType = $path;
 
 if ($reportType === 'low-stock') {
-    // Products with fewer than 10 in stock — uses WHERE, which you already know
+    // Products with fewer than 10 in stock
     $result = $conn->query("SELECT * FROM Products WHERE stock_quantity < 10");
     $products = [];
     while ($row = $result->fetch_assoc()) {
@@ -17,8 +20,6 @@ if ($reportType === 'low-stock') {
     echo json_encode($products);
 
 } elseif ($reportType === 'top-customers') {
-    // NOTE: This uses a JOIN, which combines matching rows from two tables (Users + Orders).
-    // You haven't covered this yet, but it's necessary to connect "which user" to "how much they spent."
     $sql = "SELECT u.user_id, u.first_name, u.last_name, 
                    COUNT(o.order_id) AS orders_placed, 
                    SUM(o.total_amount) AS lifetime_value
@@ -35,7 +36,6 @@ if ($reportType === 'low-stock') {
     echo json_encode($customers);
 
 } elseif ($reportType === 'monthly-sales') {
-    // Groups total sales by month, using DATE_FORMAT — similar to the DAY()/DAYOFYEAR() you've already used
     $sql = "SELECT DATE_FORMAT(order_date, '%Y-%m') AS month, 
                    SUM(total_amount) AS total_sales
             FROM Orders

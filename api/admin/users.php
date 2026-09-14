@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json');
 require '../../config/db.php';
+require '../../config/jwt.php';
+
+requireAdmin($conn); 
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Extract ID from URL if present, e.g. /users.php/3
+// Extract ID from URL if present
 $requestUri = $_SERVER['REQUEST_URI'];
 $parts = explode('users.php', $requestUri);
 $path = isset($parts[1]) ? trim($parts[1], '/') : '';
@@ -56,7 +59,7 @@ if ($method === 'GET') {
         } else {
             http_response_code(404);
             echo json_encode(["error" => "User not found"]);
-        }
+        }S
     } else {
         http_response_code(500);
         echo json_encode(["error" => "Delete failed: " . $stmt->error]);
