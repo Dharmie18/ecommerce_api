@@ -10,7 +10,7 @@ $user_id = getAuthenticatedUserId();
 
 if ($method === 'GET') {
 
-    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, created_at FROM Users WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM Users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();

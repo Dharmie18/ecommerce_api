@@ -17,7 +17,7 @@ if ($method === 'GET') {
 
     if ($user_id) {
         // Single user
-        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, created_at FROM Users WHERE user_id = ?");
+        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM Users WHERE user_id = ?");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -32,7 +32,7 @@ if ($method === 'GET') {
 
     } else {
         // All users
-        $result = $conn->query("SELECT user_id, first_name, last_name, email, created_at FROM Users");
+        $result = $conn->query("SELECT user_id, first_name, last_name, email, role, created_at FROM Users");
         $users = [];
 
         while ($row = $result->fetch_assoc()) {
@@ -50,6 +50,18 @@ if ($method === 'GET') {
         exit;
     }
 
+    // Safeguard: Prevent deleting admin accounts
+    $checkAdmin = $conn->prepare("SELECT role FROM Users WHERE user_id = ?");
+    $checkAdmin->bind_param("i", $user_id);
+    $checkAdmin->execute();
+    $targetUser = $checkAdmin->get_result()->fetch_assoc();
+
+    if ($targetUser && $targetUser['role'] === 'admin') {
+        http_response_code(403);
+        echo json_encode(["error" => "Administrator accounts cannot be deleted"]);
+        exit;
+    }
+
     $stmt = $conn->prepare("DELETE FROM Users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
 
@@ -59,7 +71,7 @@ if ($method === 'GET') {
         } else {
             http_response_code(404);
             echo json_encode(["error" => "User not found"]);
-        }S
+        }
     } else {
         http_response_code(500);
         echo json_encode(["error" => "Delete failed: " . $stmt->error]);
