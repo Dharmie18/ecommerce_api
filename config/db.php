@@ -8,22 +8,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+mysqli_report(MYSQLI_REPORT_OFF);
+
 $host     = getenv('DB_HOST') ?: "localhost";
 $username = getenv('DB_USER') ?: "root";
 $password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : "");
-$dbname   = getenv('DB_NAME') ?: "defaultdb";
+$is_local = in_array(strtolower($host), ['localhost', '127.0.0.1', '::1']);
+$dbname   = getenv('DB_NAME') ?: ($is_local ? "ecommerce" : "defaultdb");
 $port     = getenv('DB_PORT') ? intval(getenv('DB_PORT')) : 3306;
 
-$conn = mysqli_init();
-$conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
-$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
-
-if (!@$conn->real_connect($host, $username, $password, $dbname, $port, NULL, MYSQLI_CLIENT_SSL)) {
-    // Fallback to non-SSL if local or unsupported
+if ($is_local) {
     $conn = @new mysqli($host, $username, $password, $dbname, $port);
+} else {
+    $conn = mysqli_init();
+    $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
+    $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+    if (!@$conn->real_connect($host, $username, $password, $dbname, $port, NULL, MYSQLI_CLIENT_SSL)) {
+        $conn = @new mysqli($host, $username, $password, $dbname, $port);
+    }
 }
 
 if ($conn->connect_error) {
-    die(json_encode(["error" => "Connection failed: " . $conn->connect_error]));
+    http_response_code(500);
+    die(json_encode(["error" => "Database connection failed: " . $conn->connect_error]));
 }
 ?>
