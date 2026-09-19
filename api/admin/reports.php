@@ -12,7 +12,7 @@ $reportType = $path;
 
 if ($reportType === 'low-stock') {
     // Products with fewer than 10 in stock
-    $result = $conn->query("SELECT * FROM Products WHERE stock_quantity < 10");
+    $result = $conn->query("SELECT * FROM products WHERE stock_quantity < 10");
     $products = [];
     while ($row = $result->fetch_assoc()) {
         $products[] = $row;
@@ -23,8 +23,8 @@ if ($reportType === 'low-stock') {
     $sql = "SELECT u.user_id, u.first_name, u.last_name, 
                    COUNT(o.order_id) AS orders_placed, 
                    SUM(o.total_amount) AS lifetime_value
-            FROM Users u
-            JOIN Orders o ON u.user_id = o.user_id
+            FROM users u
+            JOIN orders o ON u.user_id = o.user_id
             GROUP BY u.user_id
             ORDER BY lifetime_value DESC
             LIMIT 5";
@@ -38,7 +38,7 @@ if ($reportType === 'low-stock') {
 } elseif ($reportType === 'monthly-sales') {
     $sql = "SELECT DATE_FORMAT(order_date, '%Y-%m') AS month, 
                    SUM(total_amount) AS total_sales
-            FROM Orders
+            FROM orders
             WHERE order_status != 'Cancelled'
             GROUP BY month
             ORDER BY month DESC";

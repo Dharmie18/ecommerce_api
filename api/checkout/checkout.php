@@ -39,7 +39,7 @@ try {
             throw new Exception("Each item needs a valid product_id and quantity");
         }
 
-        $stmt = $conn->prepare("SELECT price, stock_quantity FROM Products WHERE product_id = ?");
+        $stmt = $conn->prepare("SELECT price, stock_quantity FROM products WHERE product_id = ?");
         $stmt->bind_param("i", $product_id);
         $stmt->execute();
         $product = $stmt->get_result()->fetch_assoc();
@@ -61,22 +61,22 @@ try {
         ];
     }
 
-    $stmt = $conn->prepare("INSERT INTO Orders (user_id, total_amount, shipping_address) VALUES (?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address) VALUES (?, ?, ?)");
     $stmt->bind_param("ids", $user_id, $total_amount, $shipping_address);
     $stmt->execute();
     $order_id = $stmt->insert_id;
 
     foreach ($orderItemsData as $orderItem) {
-        $stmt = $conn->prepare("INSERT INTO Order_Items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiid", $order_id, $orderItem['product_id'], $orderItem['quantity'], $orderItem['unit_price']);
         $stmt->execute();
 
-        $stmt = $conn->prepare("UPDATE Products SET stock_quantity = stock_quantity - ? WHERE product_id = ?");
+        $stmt = $conn->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?");
         $stmt->bind_param("ii", $orderItem['quantity'], $orderItem['product_id']);
         $stmt->execute();
     }
 
-    $stmt = $conn->prepare("INSERT INTO Payments (order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'Completed')");
+    $stmt = $conn->prepare("INSERT INTO payments (order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'Completed')");
     $stmt->bind_param("ids", $order_id, $total_amount, $payment_method);
     $stmt->execute();
 

@@ -9,7 +9,7 @@ $product_id = is_numeric($path) ? intval($path) : null;
 
 if ($product_id) {
     // Single product
-    $stmt = $conn->prepare("SELECT * FROM Products WHERE product_id = ?");
+    $stmt = $conn->prepare("SELECT * FROM products WHERE product_id = ?");
     $stmt->bind_param("i", $product_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -24,7 +24,7 @@ if ($product_id) {
 
 } else {
     // All products
-    $result = $conn->query("SELECT * FROM Products");
+    $result = $conn->query("SELECT * FROM products");
     $products = [];
 
     while ($row = $result->fetch_assoc()) {

@@ -26,7 +26,7 @@ if ($method === 'POST') {
         exit;
     }
 
-    $stmt = $conn->prepare("INSERT INTO Products (product_name, description, price, stock_quantity, category_id) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO products (product_name, description, price, stock_quantity, category_id) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("ssdii", $product_name, $description, $price, $stock_quantity, $category_id);
 
     if ($stmt->execute()) {
@@ -48,7 +48,7 @@ if ($method === 'POST') {
     $price        = $data['price'] ?? 0;
     $stock_quantity = $data['stock_quantity'] ?? 0;
 
-    $stmt = $conn->prepare("UPDATE Products SET product_name = ?, description = ?, price = ?, stock_quantity = ? WHERE product_id = ?");
+    $stmt = $conn->prepare("UPDATE products SET product_name = ?, description = ?, price = ?, stock_quantity = ? WHERE product_id = ?");
     $stmt->bind_param("ssdii", $product_name, $description, $price, $stock_quantity, $product_id);
 
     if ($stmt->execute()) {
@@ -65,7 +65,7 @@ if ($method === 'POST') {
         exit;
     }
 
-    $stmt = $conn->prepare("DELETE FROM Products WHERE product_id = ?");
+    $stmt = $conn->prepare("DELETE FROM products WHERE product_id = ?");
     $stmt->bind_param("i", $product_id);
 
     if ($stmt->execute()) {

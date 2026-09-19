@@ -16,7 +16,7 @@ $payment_id = is_numeric($path) ? intval($path) : null;
 if ($method === 'GET') {
 
     if ($payment_id) {
-        $stmt = $conn->prepare("SELECT * FROM Payments WHERE payment_id = ?");
+        $stmt = $conn->prepare("SELECT * FROM payments WHERE payment_id = ?");
         $stmt->bind_param("i", $payment_id);
         $stmt->execute();
         $payment = $stmt->get_result()->fetch_assoc();
@@ -29,7 +29,7 @@ if ($method === 'GET') {
         }
 
     } else {
-        $result = $conn->query("SELECT * FROM Payments");
+        $result = $conn->query("SELECT * FROM payments");
         $payments = [];
         while ($row = $result->fetch_assoc()) {
             $payments[] = $row;
@@ -53,7 +53,7 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE Payments SET payment_status = ? WHERE payment_id = ?");
+    $stmt = $conn->prepare("UPDATE payments SET payment_status = ? WHERE payment_id = ?");
     $stmt->bind_param("si", $payment_status, $payment_id);
 
     if ($stmt->execute()) {

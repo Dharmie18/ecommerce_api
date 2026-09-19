@@ -10,7 +10,7 @@ $user_id = getAuthenticatedUserId();
 
 if ($method === 'GET') {
 
-    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM Users WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -48,7 +48,7 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE Users SET first_name = ?, last_name = ?, email = ? WHERE user_id = ?");
+    $stmt = $conn->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE user_id = ?");
     $stmt->bind_param("sssi", $first_name, $last_name, $email, $user_id);
 
     if ($stmt->execute()) {

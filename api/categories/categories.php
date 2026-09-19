@@ -9,7 +9,7 @@ $category_id = is_numeric($path) ? intval($path) : null;
 
 if ($category_id) {
     // Single category
-    $stmt = $conn->prepare("SELECT * FROM Categories WHERE category_id = ?");
+    $stmt = $conn->prepare("SELECT * FROM categories WHERE category_id = ?");
     $stmt->bind_param("i", $category_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -24,7 +24,7 @@ if ($category_id) {
 
 } else {
     // All categories
-    $result = $conn->query("SELECT * FROM Categories");
+    $result = $conn->query("SELECT * FROM categories");
     $categories = [];
 
     while ($row = $result->fetch_assoc()) {

@@ -23,7 +23,7 @@ if ($method === 'POST') {
         exit;
     }
 
-    $stmt = $conn->prepare("INSERT INTO Categories (category_name, parent_category_id) VALUES (?, ?)");
+    $stmt = $conn->prepare("INSERT INTO categories (category_name, parent_category_id) VALUES (?, ?)");
     $stmt->bind_param("si", $category_name, $parent_category_id);
 
     if ($stmt->execute()) {
@@ -42,7 +42,7 @@ if ($method === 'POST') {
 
     $category_name = $data['category_name'] ?? '';
 
-    $stmt = $conn->prepare("UPDATE Categories SET category_name = ? WHERE category_id = ?");
+    $stmt = $conn->prepare("UPDATE categories SET category_name = ? WHERE category_id = ?");
     $stmt->bind_param("si", $category_name, $category_id);
 
     if ($stmt->execute()) {
@@ -59,7 +59,7 @@ if ($method === 'POST') {
         exit;
     }
 
-    $stmt = $conn->prepare("DELETE FROM Categories WHERE category_id = ?");
+    $stmt = $conn->prepare("DELETE FROM categories WHERE category_id = ?");
     $stmt->bind_param("i", $category_id);
 
     if ($stmt->execute()) {

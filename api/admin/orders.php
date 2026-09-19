@@ -16,7 +16,7 @@ $order_id = is_numeric($path) ? intval($path) : null;
 if ($method === 'GET') {
 
     if ($order_id) {
-        $stmt = $conn->prepare("SELECT * FROM Orders WHERE order_id = ?");
+        $stmt = $conn->prepare("SELECT * FROM orders WHERE order_id = ?");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         $order = $stmt->get_result()->fetch_assoc();
@@ -29,7 +29,7 @@ if ($method === 'GET') {
         }
 
     } else {
-        $result = $conn->query("SELECT * FROM Orders");
+        $result = $conn->query("SELECT * FROM orders");
         $orders = [];
         while ($row = $result->fetch_assoc()) {
             $orders[] = $row;
@@ -53,7 +53,7 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE Orders SET order_status = ? WHERE order_id = ?");
+    $stmt = $conn->prepare("UPDATE orders SET order_status = ? WHERE order_id = ?");
     $stmt->bind_param("si", $order_status, $order_id);
 
     if ($stmt->execute()) {

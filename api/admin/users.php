@@ -17,7 +17,7 @@ if ($method === 'GET') {
 
     if ($user_id) {
         // Single user
-        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM Users WHERE user_id = ?");
+        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM users WHERE user_id = ?");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -32,7 +32,7 @@ if ($method === 'GET') {
 
     } else {
         // All users
-        $result = $conn->query("SELECT user_id, first_name, last_name, email, role, created_at FROM Users");
+        $result = $conn->query("SELECT user_id, first_name, last_name, email, role, created_at FROM users");
         $users = [];
 
         while ($row = $result->fetch_assoc()) {
@@ -51,7 +51,7 @@ if ($method === 'GET') {
     }
 
     // Safeguard: Prevent deleting admin accounts
-    $checkAdmin = $conn->prepare("SELECT role FROM Users WHERE user_id = ?");
+    $checkAdmin = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
     $checkAdmin->bind_param("i", $user_id);
     $checkAdmin->execute();
     $targetUser = $checkAdmin->get_result()->fetch_assoc();
@@ -62,7 +62,7 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $conn->prepare("DELETE FROM Users WHERE user_id = ?");
+    $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
 
     if ($stmt->execute()) {

@@ -14,7 +14,7 @@ $path = isset($parts[1]) ? trim($parts[1], '/') : '';
 $subscriber_id = is_numeric($path) ? intval($path) : null;
 
 if ($method === 'GET') {
-    $result = $conn->query("SELECT subscriber_id, email, status, subscribed_at FROM NewsletterSubscribers ORDER BY subscriber_id DESC");
+    $result = $conn->query("SELECT subscriber_id, email, status, subscribed_at FROM newslettersubscribers ORDER BY subscriber_id DESC");
     $subscribers = [];
     while ($row = $result->fetch_assoc()) {
         $subscribers[] = $row;
@@ -28,7 +28,7 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $conn->prepare("DELETE FROM NewsletterSubscribers WHERE subscriber_id = ?");
+    $stmt = $conn->prepare("DELETE FROM newslettersubscribers WHERE subscriber_id = ?");
     $stmt->bind_param("i", $subscriber_id);
 
     if ($stmt->execute()) {

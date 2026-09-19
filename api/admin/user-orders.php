@@ -22,7 +22,7 @@ if (!$user_id) {
 }
 
 // Fetch user profile info
-$uStmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM Users WHERE user_id = ?");
+$uStmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM users WHERE user_id = ?");
 $uStmt->bind_param("i", $user_id);
 $uStmt->execute();
 $user = $uStmt->get_result()->fetch_assoc();
@@ -34,7 +34,7 @@ if (!$user) {
 }
 
 // Fetch all orders for this user
-$oStmt = $conn->prepare("SELECT o.*, p.payment_method, p.payment_status FROM Orders o LEFT JOIN Payments p ON o.order_id = p.order_id WHERE o.user_id = ? ORDER BY o.order_date DESC");
+$oStmt = $conn->prepare("SELECT o.*, p.payment_method, p.payment_status FROM orders o LEFT JOIN payments p ON o.order_id = p.order_id WHERE o.user_id = ? ORDER BY o.order_date DESC");
 $oStmt->bind_param("i", $user_id);
 $oStmt->execute();
 $ordersResult = $oStmt->get_result();
@@ -46,7 +46,7 @@ while ($order = $ordersResult->fetch_assoc()) {
     $lifetimeSpend += floatval($order['total_amount']);
     
     // Fetch items for each order
-    $itemStmt = $conn->prepare("SELECT oi.*, pr.product_name, pr.category_id FROM Order_Items oi JOIN Products pr ON oi.product_id = pr.product_id WHERE oi.order_id = ?");
+    $itemStmt = $conn->prepare("SELECT oi.*, pr.product_name, pr.category_id FROM order_items oi JOIN products pr ON oi.product_id = pr.product_id WHERE oi.order_id = ?");
     $itemStmt->bind_param("i", $order['order_id']);
     $itemStmt->execute();
     $itemsRes = $itemStmt->get_result();

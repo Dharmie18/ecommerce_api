@@ -24,7 +24,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 // Check if already subscribed
-$check = $conn->prepare("SELECT subscriber_id, status FROM NewsletterSubscribers WHERE email = ?");
+$check = $conn->prepare("SELECT subscriber_id, status FROM newslettersubscribers WHERE email = ?");
 $check->bind_param("s", $email);
 $check->execute();
 $existing = $check->get_result()->fetch_assoc();
@@ -42,7 +42,7 @@ if ($existing) {
 }
 
 // Insert new subscriber
-$stmt = $conn->prepare("INSERT INTO NewsletterSubscribers (email, status) VALUES (?, 'active')");
+$stmt = $conn->prepare("INSERT INTO newslettersubscribers (email, status) VALUES (?, 'active')");
 $stmt->bind_param("s", $email);
 
 if ($stmt->execute()) {

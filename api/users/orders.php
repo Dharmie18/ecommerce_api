@@ -20,7 +20,7 @@ $order_id = is_numeric($path) ? intval($path) : null;
 
 if ($order_id) {
     // Single order — but ONLY if it belongs to this user
-    $stmt = $conn->prepare("SELECT * FROM Orders WHERE order_id = ? AND user_id = ?");
+    $stmt = $conn->prepare("SELECT * FROM orders WHERE order_id = ? AND user_id = ?");
     $stmt->bind_param("ii", $order_id, $user_id);
     $stmt->execute();
     $order = $stmt->get_result()->fetch_assoc();
@@ -33,8 +33,8 @@ if ($order_id) {
 
     $itemsStmt = $conn->prepare(
         "SELECT oi.product_id, p.product_name, oi.quantity, oi.unit_price
-         FROM Order_Items oi
-         JOIN Products p ON oi.product_id = p.product_id
+         FROM order_items oi
+         JOIN products p ON oi.product_id = p.product_id
          WHERE oi.order_id = ?"
     );
     $itemsStmt->bind_param("i", $order_id);
@@ -51,7 +51,7 @@ if ($order_id) {
 
 } else {
     // All of THIS user's orders — never anyone else's
-    $stmt = $conn->prepare("SELECT * FROM Orders WHERE user_id = ? ORDER BY order_date DESC");
+    $stmt = $conn->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY order_date DESC");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();

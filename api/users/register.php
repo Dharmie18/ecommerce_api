@@ -63,7 +63,7 @@ if (!preg_match("/[\W_]/", $password)) {
 }
 
 // Check if email is already registered
-$checkStmt = $conn->prepare("SELECT user_id FROM Users WHERE email = ?");
+$checkStmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
 $checkStmt->bind_param("s", $email);
 $checkStmt->execute();
 if ($checkStmt->get_result()->num_rows > 0) {
@@ -74,7 +74,7 @@ if ($checkStmt->get_result()->num_rows > 0) {
 
 $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
-$stmt = $conn->prepare("INSERT INTO Users (first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?)");
+$stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?)");
 $stmt->bind_param("ssss", $first_name, $last_name, $email, $password_hash);
 
 if ($stmt->execute()) {
