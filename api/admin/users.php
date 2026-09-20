@@ -17,7 +17,16 @@ if ($method === 'GET') {
 
     if ($user_id) {
         // Single user
-        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM users WHERE user_id = ?");
+        $stmt = $conn->prepare("
+            SELECT 
+                u.user_id, u.first_name, u.last_name, u.email, u.role, u.referral_code, u.referred_by_id, u.created_at,
+                CONCAT(r.first_name, ' ', r.last_name) AS referred_by_name,
+                r.referral_code AS referred_by_code,
+                (SELECT COUNT(*) FROM users ref WHERE ref.referred_by_id = u.user_id) AS referrals_count
+            FROM users u
+            LEFT JOIN users r ON u.referred_by_id = r.user_id
+            WHERE u.user_id = ?
+        ");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -32,7 +41,17 @@ if ($method === 'GET') {
 
     } else {
         // All users
-        $result = $conn->query("SELECT user_id, first_name, last_name, email, role, created_at FROM users");
+        $query = "
+            SELECT 
+                u.user_id, u.first_name, u.last_name, u.email, u.role, u.referral_code, u.referred_by_id, u.created_at,
+                CONCAT(r.first_name, ' ', r.last_name) AS referred_by_name,
+                r.referral_code AS referred_by_code,
+                (SELECT COUNT(*) FROM users ref WHERE ref.referred_by_id = u.user_id) AS referrals_count
+            FROM users u
+            LEFT JOIN users r ON u.referred_by_id = r.user_id
+            ORDER BY u.user_id DESC
+        ";
+        $result = $conn->query($query);
         $users = [];
 
         while ($row = $result->fetch_assoc()) {
