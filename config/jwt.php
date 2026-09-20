@@ -52,7 +52,7 @@ function getAuthenticatedUserId() {
 function requireAdmin($conn) {
     $user_id = getAuthenticatedUserId();
 
-    $stmt = $conn->prepare("SELECT role FROM Users WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
