@@ -4,7 +4,7 @@ require '../../config/db.php';
 
 $results = [];
 
-// 1. users table: referral_code & referred_by_id
+// users table: referral_code & referred_by_id
 $checkCol = mysqli_query($conn, "SHOW COLUMNS FROM users LIKE 'referral_code'");
 if (mysqli_num_rows($checkCol) === 0) {
     $q1 = "ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE AFTER role, ADD COLUMN referred_by_id INT NULL AFTER referral_code";
@@ -17,7 +17,7 @@ if (mysqli_num_rows($checkCol) === 0) {
     $results[] = "users table already has referral columns.";
 }
 
-// 2. Generate referral codes for users lacking one
+// Generate referral codes for users lacking one
 $resUsers = mysqli_query($conn, "SELECT user_id, first_name, email FROM users WHERE referral_code IS NULL OR referral_code = ''");
 if ($resUsers) {
     $genCount = 0;
@@ -32,7 +32,7 @@ if ($resUsers) {
     $results[] = "Generated {$genCount} referral codes for existing users.";
 }
 
-// 3. Create coupons table
+// Create coupons table
 $qCoupons = "CREATE TABLE IF NOT EXISTS coupons (
     coupon_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -53,7 +53,7 @@ if (mysqli_query($conn, $qCoupons)) {
     $results[] = "Error creating coupons table: " . mysqli_error($conn);
 }
 
-// 3b. Ensure expires_at column exists and backfill 7 days
+// Ensure expires_at column exists and backfill 7 days
 $checkExp = mysqli_query($conn, "SHOW COLUMNS FROM coupons LIKE 'expires_at'");
 if (mysqli_num_rows($checkExp) === 0) {
     mysqli_query($conn, "ALTER TABLE coupons ADD COLUMN expires_at DATETIME NULL AFTER used_at");
@@ -63,7 +63,7 @@ if (mysqli_num_rows($checkExp) === 0) {
     mysqli_query($conn, "UPDATE coupons SET expires_at = DATE_ADD(created_at, INTERVAL 7 DAY) WHERE expires_at IS NULL");
 }
 
-// 4. orders table: coupon_id & discount_amount
+// orders table: coupon_id & discount_amount
 $checkOrdCol = mysqli_query($conn, "SHOW COLUMNS FROM orders LIKE 'discount_amount'");
 if (mysqli_num_rows($checkOrdCol) === 0) {
     $qOrd = "ALTER TABLE orders ADD COLUMN coupon_id INT NULL AFTER shipping_address, ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0.00 AFTER coupon_id";

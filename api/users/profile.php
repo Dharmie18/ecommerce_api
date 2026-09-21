@@ -2,6 +2,9 @@
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
+require_once '../../config/ensure_schema.php';
+
+ensureUserReferralColumns($conn);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -10,13 +13,23 @@ $user_id = getAuthenticatedUserId();
 
 if ($method === 'GET') {
 
-    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, created_at FROM users WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, referral_code, referred_by_id, created_at FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    $user = $result->fetch_assoc();
+    $user = $result ? $result->fetch_assoc() : null;
 
     if ($user) {
+        if (empty($user['referral_code'])) {
+            $clean = preg_replace('/[^a-zA-Z]/', '', $user['first_name']);
+            $prefix = strtoupper(substr($clean, 0, 3));
+            if (strlen($prefix) < 3) $prefix = 'SI';
+            $refCode = $prefix . '-' . strtoupper(substr(md5($user_id . $user['email'] . 'shopit2026'), 0, 5));
+            $upd = $conn->prepare("UPDATE users SET referral_code = ? WHERE user_id = ?");
+            $upd->bind_param("si", $refCode, $user_id);
+            $upd->execute();
+            $user['referral_code'] = $refCode;
+        }
         echo json_encode($user);
     } else {
         http_response_code(404);

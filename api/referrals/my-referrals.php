@@ -2,8 +2,10 @@
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
+require_once '../../config/ensure_schema.php';
 
 $user_id = getAuthenticatedUserId();
+ensureUserReferralColumns($conn);
 
 function maskEmail($email) {
     if (empty($email) || !str_contains($email, '@')) return '***@***.com';
@@ -19,7 +21,22 @@ function maskEmail($email) {
     return $maskedName . '@' . $domain;
 }
 
-// 1. Fetch user's own referral code
+$conn->query("CREATE TABLE IF NOT EXISTS coupons (
+    coupon_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    code VARCHAR(30) NOT NULL UNIQUE,
+    discount_percent DECIMAL(5,2) NOT NULL,
+    min_items INT DEFAULT 3,
+    is_used TINYINT(1) DEFAULT 0,
+    order_id INT NULL,
+    used_at TIMESTAMP NULL,
+    expires_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+//  Fetch user's own referral code
 $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, referral_code, referred_by_id FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -42,7 +59,7 @@ if (empty($refCode)) {
     $upd->execute();
 }
 
-// 2. Fetch who referred this user (if any)
+// Fetch who referred this user (if any)
 $referredBy = null;
 if (!empty($user['referred_by_id'])) {
     $stmtRefBy = $conn->prepare("SELECT first_name, last_name, referral_code FROM users WHERE user_id = ?");
@@ -57,7 +74,7 @@ if (!empty($user['referred_by_id'])) {
     }
 }
 
-// 3. Fetch list of users who registered with this user's code
+// Fetch list of users who registered with this user's code
 $stmtRefs = $conn->prepare("SELECT user_id, first_name, last_name, email, created_at FROM users WHERE referred_by_id = ? ORDER BY created_at DESC");
 $stmtRefs->bind_param("i", $user_id);
 $stmtRefs->execute();
@@ -74,7 +91,7 @@ while ($r = $resRefs->fetch_assoc()) {
     ];
 }
 
-// 4. Fetch user's coupons
+// Fetch user's coupons
 $stmtC = $conn->prepare("SELECT coupon_id, code, discount_percent, min_items, is_used, used_at, expires_at, created_at FROM coupons WHERE user_id = ? ORDER BY is_used ASC, created_at DESC");
 $stmtC->bind_param("i", $user_id);
 $stmtC->execute();

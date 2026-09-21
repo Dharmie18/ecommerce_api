@@ -2,8 +2,10 @@
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
+require_once '../../config/ensure_schema.php';
 
 requireAdmin($conn); 
+ensureUserReferralColumns($conn);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -14,6 +16,17 @@ $path = isset($parts[1]) ? trim($parts[1], '/') : '';
 $user_id = is_numeric($path) ? intval($path) : null;
 
 if ($method === 'GET') {
+    // Auto-generate codes for any user missing one
+    $missingUsers = $conn->query("SELECT user_id, first_name, email FROM users WHERE referral_code IS NULL OR referral_code = ''");
+    if ($missingUsers) {
+        while ($u = $missingUsers->fetch_assoc()) {
+            $clean = preg_replace('/[^a-zA-Z]/', '', $u['first_name']);
+            $prefix = strtoupper(substr($clean, 0, 3));
+            if (strlen($prefix) < 3) $prefix = 'SI';
+            $c = $prefix . '-' . strtoupper(substr(md5($u['user_id'] . $u['email'] . 'shopit2026'), 0, 5));
+            $conn->query("UPDATE users SET referral_code = '{$c}' WHERE user_id = {$u['user_id']}");
+        }
+    }
 
     if ($user_id) {
         // Single user
@@ -30,7 +43,7 @@ if ($method === 'GET') {
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
-        $user = $result->fetch_assoc();
+        $user = $result ? $result->fetch_assoc() : null;
 
         if ($user) {
             echo json_encode($user);
@@ -54,8 +67,18 @@ if ($method === 'GET') {
         $result = $conn->query($query);
         $users = [];
 
-        while ($row = $result->fetch_assoc()) {
-            $users[] = $row;
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $users[] = $row;
+            }
+        } else {
+            // Fallback to simple query if JOIN fails
+            $fallback = $conn->query("SELECT user_id, first_name, last_name, email, role, created_at FROM users ORDER BY user_id DESC");
+            if ($fallback) {
+                while ($row = $fallback->fetch_assoc()) {
+                    $users[] = $row;
+                }
+            }
         }
 
         echo json_encode($users);
