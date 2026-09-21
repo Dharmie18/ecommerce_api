@@ -5,6 +5,7 @@ require '../../config/jwt.php';
 require_once '../../config/ensure_schema.php';
 
 ensureUserReferralColumns($conn);
+ensureUserVerificationColumns($conn);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -13,7 +14,7 @@ $user_id = getAuthenticatedUserId();
 
 if ($method === 'GET') {
 
-    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, referral_code, referred_by_id, created_at FROM users WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, is_verified, referral_code, referred_by_id, created_at FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -26,10 +27,11 @@ if ($method === 'GET') {
             if (strlen($prefix) < 3) $prefix = 'SI';
             $refCode = $prefix . '-' . strtoupper(substr(md5($user_id . $user['email'] . 'shopit2026'), 0, 5));
             $upd = $conn->prepare("UPDATE users SET referral_code = ? WHERE user_id = ?");
-            $upd->bind_param("si", $refCode, $user_id);
+            $upd->bind_param("si", $user_id);
             $upd->execute();
             $user['referral_code'] = $refCode;
         }
+        $user['is_verified'] = (bool)($user['is_verified'] ?? 0);
         echo json_encode($user);
     } else {
         http_response_code(404);
@@ -75,3 +77,4 @@ if ($method === 'GET') {
     http_response_code(405);
     echo json_encode(["error" => "Method not allowed"]);
 }
+?>

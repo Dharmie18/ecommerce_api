@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
+require_once '../../config/mailer.php';
 
 // So the identity comes from the verified token 
 $user_id = getAuthenticatedUserId();
@@ -41,7 +42,7 @@ try {
             throw new Exception("Each item needs a valid product_id and quantity");
         }
 
-        $stmt = $conn->prepare("SELECT price, stock_quantity FROM products WHERE product_id = ?");
+        $stmt = $conn->prepare("SELECT product_name, price, stock_quantity FROM products WHERE product_id = ?");
         $stmt->bind_param("i", $product_id);
         $stmt->execute();
         $product = $stmt->get_result()->fetch_assoc();
@@ -60,7 +61,8 @@ try {
         $orderItemsData[] = [
             'product_id' => $product_id,
             'quantity'   => $quantity,
-            'unit_price' => $unit_price
+            'unit_price' => $unit_price,
+            'name'       => $product['product_name']
         ];
     }
 
@@ -130,7 +132,46 @@ try {
     $stmt->bind_param("ids", $order_id, $final_total, $payment_method);
     $stmt->execute();
 
+    // Clear user cart items in database
+    $stmtCart = $conn->prepare("DELETE FROM cart_items WHERE user_id = ?");
+    $stmtCart->bind_param("i", $user_id);
+    $stmtCart->execute();
+
     $conn->commit();
+
+    // Send Order Confirmation & Receipt Email
+    try {
+        $userStmt = $conn->prepare("SELECT first_name, last_name, email FROM users WHERE user_id = ?");
+        $userStmt->bind_param("i", $user_id);
+        $userStmt->execute();
+        $userRow = $userStmt->get_result()->fetch_assoc();
+
+        if ($userRow) {
+            $tax_amount = round($final_total * 0.075, 2);
+            $receiptItems = [];
+            foreach ($orderItemsData as $oi) {
+                $receiptItems[] = [
+                    'name'     => $oi['name'],
+                    'quantity' => $oi['quantity'],
+                    'price'    => $oi['unit_price']
+                ];
+            }
+            $receiptHtml = getOrderReceiptEmailHtml(
+                $userRow['first_name'],
+                $order_id,
+                $receiptItems,
+                floatval($subtotal),
+                floatval($discount_amount),
+                floatval($tax_amount),
+                floatval($final_total + $tax_amount),
+                $shipping_address,
+                $payment_method
+            );
+            sendShopItEmail($userRow['email'], $userRow['first_name'], "Order Confirmation #{$order_id} - ShopIt", $receiptHtml);
+        }
+    } catch (Exception $mailEx) {
+        // Mail failure should never fail the checkout transaction
+    }
 
     echo json_encode([
         "message" => "Order placed and payment recorded successfully",

@@ -58,6 +58,23 @@ if ($order_id) {
 
     $orders = [];
     while ($row = $result->fetch_assoc()) {
+        $oid = (int)$row['order_id'];
+        $itemsStmt = $conn->prepare(
+            "SELECT oi.product_id, p.product_name, p.image_url, oi.quantity, oi.unit_price
+             FROM order_items oi
+             JOIN products p ON oi.product_id = p.product_id
+             WHERE oi.order_id = ?"
+        );
+        $itemsStmt->bind_param("i", $oid);
+        $itemsStmt->execute();
+        $itemsResult = $itemsStmt->get_result();
+
+        $items = [];
+        while ($itemRow = $itemsResult->fetch_assoc()) {
+            $items[] = $itemRow;
+        }
+
+        $row['items'] = $items;
         $orders[] = $row;
     }
 

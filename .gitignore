@@ -1,3 +1,12 @@
 *.zip
 *.sql
 test_write.txt
+logs/
+.env
+
+# agent and ai docs
+AGENTS.md
+CLAUDE.md
+agents.md
+claude.md
+
