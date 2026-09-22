@@ -3,6 +3,10 @@ header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
 require_once '../../config/mailer.php';
+require_once '../../config/ensure_schema.php';
+
+// Ensure all database tables and columns are up to date
+ensureAllSchemas($conn);
 
 // So the identity comes from the verified token 
 $user_id = getAuthenticatedUserId();
@@ -104,7 +108,10 @@ try {
 
     $final_total = max(0, $subtotal - $discount_amount);
 
-    $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address, coupon_id, discount_amount) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address, coupon_id, discount_amount, order_status, order_date) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())");
+    if (!$stmt) {
+        $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address, coupon_id, discount_amount) VALUES (?, ?, ?, ?, ?)");
+    }
     $stmt->bind_param("idsid", $user_id, $final_total, $shipping_address, $coupon_id, $discount_amount);
     $stmt->execute();
     $order_id = $stmt->insert_id;

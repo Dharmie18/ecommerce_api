@@ -101,4 +101,96 @@ function ensureVirtualBankAccountsTable(mysqli $conn): void
     }
 }
 
+function ensureCouponsTable(mysqli $conn): void
+{
+    $query = "CREATE TABLE IF NOT EXISTS coupons (
+        coupon_id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        code VARCHAR(64) UNIQUE NOT NULL,
+        discount_percent DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+        min_items INT NOT NULL DEFAULT 3,
+        is_used TINYINT(1) DEFAULT 0,
+        order_id INT NULL,
+        expires_at DATETIME NULL,
+        used_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_coupon_user (user_id, is_used),
+        INDEX idx_coupon_code (code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    $conn->query($query);
+}
+
+function ensureOrdersSchema(mysqli $conn): void
+{
+    $conn->query("CREATE TABLE IF NOT EXISTS orders (
+        order_id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        total_amount DECIMAL(10,2) NOT NULL,
+        order_status VARCHAR(50) DEFAULT 'Pending',
+        order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        shipping_address TEXT,
+        coupon_id INT NULL,
+        discount_amount DECIMAL(10,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id),
+        INDEX idx_status (order_status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $columns = [
+        'coupon_id' => "ALTER TABLE orders ADD COLUMN coupon_id INT NULL AFTER shipping_address",
+        'discount_amount' => "ALTER TABLE orders ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0.00 AFTER coupon_id",
+        'order_status' => "ALTER TABLE orders ADD COLUMN order_status VARCHAR(50) DEFAULT 'Pending' AFTER total_amount",
+        'order_date' => "ALTER TABLE orders ADD COLUMN order_date DATETIME DEFAULT CURRENT_TIMESTAMP AFTER order_status",
+        'shipping_address' => "ALTER TABLE orders ADD COLUMN shipping_address TEXT NULL AFTER total_amount",
+    ];
+
+    foreach ($columns as $column => $statement) {
+        $check = $conn->query("SHOW COLUMNS FROM orders LIKE '{$column}'");
+        if ($check !== false && $check->num_rows === 0) {
+            $conn->query($statement);
+        }
+    }
+}
+
+function ensureOrderItemsSchema(mysqli $conn): void
+{
+    $conn->query("CREATE TABLE IF NOT EXISTS order_items (
+        order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT NOT NULL,
+        product_id INT NOT NULL,
+        quantity INT NOT NULL DEFAULT 1,
+        unit_price DECIMAL(10,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_order (order_id),
+        INDEX idx_product (product_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+}
+
+function ensurePaymentsSchema(mysqli $conn): void
+{
+    $conn->query("CREATE TABLE IF NOT EXISTS payments (
+        payment_id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        payment_status VARCHAR(50) DEFAULT 'Completed',
+        payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_order (order_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+}
+
+function ensureAllSchemas(mysqli $conn): void
+{
+    ensureUserReferralColumns($conn);
+    ensureUserVerificationColumns($conn);
+    ensurePasswordResetTable($conn);
+    ensureCartTable($conn);
+    ensureVirtualBankAccountsTable($conn);
+    ensureCouponsTable($conn);
+    ensureOrdersSchema($conn);
+    ensureOrderItemsSchema($conn);
+    ensurePaymentsSchema($conn);
+}
+
 

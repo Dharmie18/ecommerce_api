@@ -2,6 +2,9 @@
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
+require_once '../../config/ensure_schema.php';
+
+ensureCouponsTable($conn);
 
 $user_id = getAuthenticatedUserId();
 
