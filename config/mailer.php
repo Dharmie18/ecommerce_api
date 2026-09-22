@@ -74,13 +74,14 @@ function sendRawSmtpEmail(
     string $htmlBody,
     string $textBody
 ): array {
-    $timeout = 15;
+    $timeout = 3;
     $prefix = ($secure === 'ssl') ? 'ssl://' : '';
     $socket = @stream_socket_client($prefix . $host . ':' . $port, $errno, $errstr, $timeout);
 
     if (!$socket) {
         return ['success' => false, 'error' => "Cannot connect to SMTP server: {$errstr} ({$errno})"];
     }
+    stream_set_timeout($socket, 3);
 
     $read = function () use ($socket) {
         $response = '';

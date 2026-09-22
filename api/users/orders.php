@@ -19,8 +19,8 @@ $path = isset($parts[1]) ? trim($parts[1], '/') : '';
 $order_id = is_numeric($path) ? intval($path) : null;
 
 if ($order_id) {
-    // Single order — but ONLY if it belongs to this user
-    $stmt = $conn->prepare("SELECT * FROM orders WHERE order_id = ? AND user_id = ?");
+    // Single order — for authenticated user
+    $stmt = $conn->prepare("SELECT o.*, p.payment_method, p.payment_status FROM orders o LEFT JOIN payments p ON o.order_id = p.order_id WHERE o.order_id = ? AND o.user_id = ?");
     $stmt->bind_param("ii", $order_id, $user_id);
     $stmt->execute();
     $order = $stmt->get_result()->fetch_assoc();
@@ -47,11 +47,13 @@ if ($order_id) {
     }
 
     $order['items'] = $items;
+    $order['order_status'] = $order['order_status'] ?? $order['status'] ?? 'Pending';
+    $order['order_date'] = $order['order_date'] ?? $order['created_at'] ?? date('Y-m-d H:i:s');
     echo json_encode($order);
 
 } else {
-    // All of THIS user's orders — never anyone else's
-    $stmt = $conn->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY order_date DESC");
+    // All orders for authenticated user
+    $stmt = $conn->prepare("SELECT o.*, p.payment_method, p.payment_status FROM orders o LEFT JOIN payments p ON o.order_id = p.order_id WHERE o.user_id = ? ORDER BY o.order_id DESC");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -75,6 +77,8 @@ if ($order_id) {
         }
 
         $row['items'] = $items;
+        $row['order_status'] = $row['order_status'] ?? $row['status'] ?? 'Pending';
+        $row['order_date'] = $row['order_date'] ?? $row['created_at'] ?? date('Y-m-d H:i:s');
         $orders[] = $row;
     }
 
