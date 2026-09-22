@@ -18,7 +18,7 @@ if (empty($token)) {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, referral_code FROM users WHERE verification_token = ?");
+$stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, referral_code, verification_expires_at FROM users WHERE verification_token = ?");
 $stmt->bind_param("s", $token);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -30,8 +30,19 @@ if (!$user) {
     exit;
 }
 
+// Check 30-minute expiration
+if (!empty($user['verification_expires_at']) && strtotime($user['verification_expires_at']) < time()) {
+    http_response_code(410);
+    echo json_encode([
+        "error" => "This verification link has expired (links are valid for 30 minutes). Please request a new verification link.",
+        "expired" => true,
+        "email" => $user['email']
+    ]);
+    exit;
+}
+
 // Mark user as verified
-$updateStmt = $conn->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE user_id = ?");
+$updateStmt = $conn->prepare("UPDATE users SET is_verified = 1, verification_token = NULL, verification_expires_at = NULL WHERE user_id = ?");
 $updateStmt->bind_param("i", $user['user_id']);
 
 if ($updateStmt->execute()) {

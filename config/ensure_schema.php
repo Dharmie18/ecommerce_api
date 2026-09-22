@@ -47,6 +47,7 @@ function ensureUserVerificationColumns(mysqli $conn): void
     $columns = [
         'is_verified' => "ALTER TABLE users ADD COLUMN is_verified TINYINT(1) DEFAULT 0 AFTER role",
         'verification_token' => "ALTER TABLE users ADD COLUMN verification_token VARCHAR(255) NULL AFTER is_verified",
+        'verification_expires_at' => "ALTER TABLE users ADD COLUMN verification_expires_at DATETIME NULL AFTER verification_token",
     ];
 
     foreach ($columns as $column => $statement) {
@@ -76,4 +77,28 @@ function ensureCartTable(mysqli $conn): void
         exit;
     }
 }
+
+function ensureVirtualBankAccountsTable(mysqli $conn): void
+{
+    $query = "CREATE TABLE IF NOT EXISTS virtual_bank_accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        account_reference VARCHAR(64) UNIQUE NOT NULL,
+        bank_name VARCHAR(100) NOT NULL,
+        account_number VARCHAR(20) NOT NULL,
+        account_name VARCHAR(150) NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        is_settled TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_ref (user_id, account_reference)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    if (!$conn->query($query)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Unable to prepare virtual bank accounts schema: ' . $conn->error]);
+        exit;
+    }
+}
+
 

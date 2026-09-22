@@ -105,7 +105,7 @@ $password_hash = password_hash($password, PASSWORD_DEFAULT);
 $verification_token = bin2hex(random_bytes(32)); // 64-character secure random token
 $is_verified = 0;
 
-$stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash, referral_code, referred_by_id, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash, referral_code, referred_by_id, is_verified, verification_token, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
 $stmt->bind_param("sssssiis", $first_name, $last_name, $email, $password_hash, $my_referral_code, $referred_by_id, $is_verified, $verification_token);
 
 if ($stmt->execute()) {
@@ -139,17 +139,17 @@ if ($stmt->execute()) {
         ];
     }
 
-    // Build Magic Verification Link
+    // Build Verification Link
     $frontendUrl = getenv('FRONTEND_URL') ?: (getenv('APP_URL') ?: 'http://localhost:3000');
     $magicLink = rtrim($frontendUrl, '/') . '/?verify_token=' . $verification_token;
 
-    // Send Magic Link Email
+    // Send Verification Link Email
     $htmlEmail = getVerificationEmailHtml($first_name, $magicLink);
     $textEmail = "Hello {$first_name},\n\nPlease verify your ShopIt account by clicking this link:\n{$magicLink}\n\nThank you,\nShopIt Commerce";
     sendShopItEmail($email, $first_name, "Verify Your ShopIt Account", $htmlEmail, $textEmail);
 
     echo json_encode([
-        "message" => "Account registered successfully! A magic verification link has been sent to your email.",
+        "message" => "Account registered successfully! A verification link has been sent to your email.",
         "user_id" => $new_user_id,
         "email" => $email,
         "is_verified" => false,

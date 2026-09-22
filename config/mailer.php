@@ -1,11 +1,6 @@
 <?php
 
-/**
- * Universal Email Sender for ShopIt Commerce
- * Works both on local environments (XAMPP) and cloud deployments (Render, Vercel API, cPanel).
- * Supports authenticated SMTP (Gmail, Brevo, Resend, SendGrid, Mailgun) and native PHP mail().
- */
-
+// Email sender for ShopIt Commerce
 function sendShopItEmail(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody = ''): array
 {
     $smtpHost   = getenv('SMTP_HOST') ?: '';
@@ -64,9 +59,7 @@ function sendShopItEmail(string $toEmail, string $toName, string $subject, strin
     ];
 }
 
-/**
- * Lightweight pure-PHP SMTP client with TLS / SSL support (Zero dependencies)
- */
+// Pure-PHP SMTP client with TLS / SSL support
 function sendRawSmtpEmail(
     string $host,
     int $port,
@@ -222,6 +215,7 @@ function getVerificationEmailHtml(string $name, string $magicLink): string
     <div class="content">
       <p>Hello <strong>{$name}</strong>,</p>
       <p>Thank you for creating an account with ShopIt! Click the button below to verify your email address and immediately access your trade dashboard and welcome rewards.</p>
+      <p style="font-size: 12px; color: #9a4e2c; font-weight: bold;">* Note: This verification link expires in 30 minutes for your security.</p>
       <div class="btn-container">
         <a href="{$magicLink}" class="btn">Verify & Activate Account</a>
       </div>
@@ -230,7 +224,7 @@ function getVerificationEmailHtml(string $name, string $magicLink): string
     </div>
     <div class="footer">
       ShopIt Commerce · Direct Wholesale & Retail Logistics<br>
-      If you did not register for an account, please disregard this email.
+      This verification link is valid for 30 minutes. If you did not register for an account, please disregard this email.
     </div>
   </div>
 </body>

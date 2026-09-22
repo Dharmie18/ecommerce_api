@@ -7,7 +7,7 @@ $user_id = getAuthenticatedUserId();
 
 $data = json_decode(file_get_contents("php://input"), true);
 $code = strtoupper(trim($data['coupon_code'] ?? ''));
-$cart_items_count = intval($data['cart_items_count'] ?? 0);
+$cart_items_count = intval($data['cart_items_count'] ?? ($data['item_count'] ?? 0));
 
 if (empty($code)) {
     http_response_code(400);
@@ -60,5 +60,13 @@ echo json_encode([
     "code" => $coupon['code'],
     "discount_percent" => (float)$coupon['discount_percent'],
     "min_items" => $minItems,
+    "coupon" => [
+        "coupon_id" => (int)$coupon['coupon_id'],
+        "code" => $coupon['code'],
+        "discount_percent" => (float)$coupon['discount_percent'],
+        "min_items" => $minItems,
+        "expires_at" => $expiresAt,
+        "is_used" => 0,
+    ],
     "message" => "{$coupon['discount_percent']}% discount successfully applied!"
 ]);

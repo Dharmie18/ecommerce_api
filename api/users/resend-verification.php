@@ -37,7 +37,7 @@ if (intval($user['is_verified']) === 1) {
 
 // Generate new token
 $new_token = bin2hex(random_bytes(32));
-$updateStmt = $conn->prepare("UPDATE users SET verification_token = ? WHERE user_id = ?");
+$updateStmt = $conn->prepare("UPDATE users SET verification_token = ?, verification_expires_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE user_id = ?");
 $updateStmt->bind_param("si", $new_token, $user['user_id']);
 
 if ($updateStmt->execute()) {
@@ -49,7 +49,7 @@ if ($updateStmt->execute()) {
     sendShopItEmail($email, $user['first_name'], "Verify Your ShopIt Account", $htmlEmail, $textEmail);
 
     echo json_encode([
-        "message" => "A new magic verification link has been sent to your email.",
+        "message" => "A new verification link has been sent to your email.",
         "email" => $email,
         "verification_link" => $magicLink,
         "debug_token" => $new_token
