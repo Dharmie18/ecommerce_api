@@ -7,11 +7,12 @@ function ensureUsersTable(mysqli $conn): void
         first_name VARCHAR(100) NOT NULL,
         last_name VARCHAR(100) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        password VARCHAR(255) NULL,
         role VARCHAR(50) DEFAULT 'customer',
         referral_code VARCHAR(50) UNIQUE NULL,
         referred_by_id INT NULL,
-        is_verified TINYINT(1) DEFAULT 0,
+        is_verified TINYINT(1) DEFAULT 1,
         verification_token VARCHAR(255) NULL,
         verification_expires_at DATETIME NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -21,14 +22,49 @@ function ensureUsersTable(mysqli $conn): void
 
     $conn->query($query);
 
-    // Seed default administrator account if none exists
-    $chkAdmin = $conn->query("SELECT user_id FROM users WHERE role = 'admin' LIMIT 1");
-    if ($chkAdmin && $chkAdmin->num_rows === 0) {
-        $adminPass = password_hash('Admin@123', PASSWORD_BCRYPT);
-        $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password, role, is_verified, referral_code) VALUES ('Super', 'Admin', 'admin@shopit.ng', ?, 'admin', 1, 'ADM-001')");
-        if ($stmt) {
-            $stmt->bind_param("s", $adminPass);
-            $stmt->execute();
+    // Ensure password_hash and password columns exist if table was already created
+    $chkHash = $conn->query("SHOW COLUMNS FROM users LIKE 'password_hash'");
+    if ($chkHash !== false && $chkHash->num_rows === 0) {
+        $conn->query("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL AFTER email");
+    }
+    $chkPass = $conn->query("SHOW COLUMNS FROM users LIKE 'password'");
+    if ($chkPass !== false && $chkPass->num_rows === 0) {
+        $conn->query("ALTER TABLE users ADD COLUMN password VARCHAR(255) NULL AFTER password_hash");
+    }
+
+    // Seed administrator accounts requested by user
+    $adminsToSeed = [
+        [
+            'first_name' => 'Super',
+            'last_name'  => 'Admin',
+            'email'      => 'admin@shopit.co',
+            'password'   => 'Gx$925]b{*_9',
+            'code'       => 'ADM-001'
+        ],
+        [
+            'first_name' => 'Store',
+            'last_name'  => 'Admin',
+            'email'      => 'admin@shopit.ng',
+            'password'   => 'Admin@123',
+            'code'       => 'ADM-002'
+        ]
+    ];
+
+    foreach ($adminsToSeed as $adm) {
+        $hash = password_hash($adm['password'], PASSWORD_BCRYPT);
+        $chk = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
+        $chk->bind_param("s", $adm['email']);
+        $chk->execute();
+        $row = $chk->get_result()->fetch_assoc();
+
+        if ($row) {
+            $upd = $conn->prepare("UPDATE users SET password_hash = ?, password = ?, role = 'admin', is_verified = 1 WHERE user_id = ?");
+            $upd->bind_param("ssi", $hash, $hash, $row['user_id']);
+            $upd->execute();
+        } else {
+            $ins = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash, password, role, is_verified, referral_code) VALUES (?, ?, ?, ?, ?, 'admin', 1, ?)");
+            $ins->bind_param("ssssss", $adm['first_name'], $adm['last_name'], $adm['email'], $hash, $hash, $adm['code']);
+            $ins->execute();
         }
     }
 }

@@ -1,18 +1,15 @@
 <?php
-// ============================================================================
-// 1. INITIAL SETUP & DEPENDENCIES
-// ============================================================================
+
+// initial setup nd dependencies
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
 require_once '../../config/ensure_schema.php';
 require_once '../../config/mailer.php';
 
-ensureUserVerificationColumns($conn);
+ensureAllSchemas($conn);
 
-// ============================================================================
-// 2. INPUT VALIDATION & PAYLOAD SANITIZATION
-// ============================================================================
+// input validation
 $data = json_decode(file_get_contents("php://input"), true);
 
 $email    = trim($data['email'] ?? '');
@@ -30,21 +27,22 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit;
 }
 
-// ============================================================================
-// 3. CREDENTIAL AUTHENTICATION & PASSWORD VERIFICATION
-// ============================================================================
-$stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password_hash, role, is_verified, referral_code FROM users WHERE email = ?");
+// credential authentication and password verification
+$stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password_hash, password, role, is_verified, referral_code FROM users WHERE email = ?");
+if (!$stmt) {
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password_hash, role, is_verified, referral_code FROM users WHERE email = ?");
+}
 $stmt->bind_param("s", $email);
 $stmt->execute();
 $result = $stmt->get_result();
-$user = $result->fetch_assoc();
+$user = $result ? $result->fetch_assoc() : null;
 
-if ($user && password_verify($password, $user['password_hash'])) {
+$storedHash = !empty($user['password_hash']) ? $user['password_hash'] : ($user['password'] ?? '');
+
+if ($user && !empty($storedHash) && password_verify($password, $storedHash)) {
     $token = generateJWT($user['user_id']);
 
-    // ========================================================================
-    // 4. SECURITY LOGIN ALERT DISPATCH
-    // ========================================================================
+    // security login alert 
     try {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown IP';
         $timeStr = date('F j, Y - g:i A') . ' UTC';
@@ -54,9 +52,7 @@ if ($user && password_verify($password, $user['password_hash'])) {
         // Non-blocking: Mail exception should not prevent successful authentication
     }
 
-    // ========================================================================
-    // 5. AUTHENTICATION SUCCESS & TOKEN ISSUANCE
-    // ========================================================================
+    // successful login response
     echo json_encode([
         "message" => "Login successful",
         "token" => $token,
