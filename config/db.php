@@ -20,16 +20,45 @@ $port     = getenv('DB_PORT') ? intval(getenv('DB_PORT')) : 3306;
 if ($is_local) {
     $conn = @new mysqli($host, $username, $password, $dbname, $port);
 } else {
+    // Cloud database connection (TiDB Cloud / Aiven) requiring SSL/TLS
     $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
-    $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
-    if (!@$conn->real_connect($host, $username, $password, $dbname, $port, NULL, MYSQLI_CLIENT_SSL)) {
-        $conn = @new mysqli($host, $username, $password, $dbname, $port);
+
+    // Check common Linux system CA bundle paths (Render Ubuntu/Debian environment)
+    $system_cas = [
+        '/etc/ssl/certs/ca-certificates.crt',
+        '/etc/pki/tls/certs/ca-bundle.crt',
+        '/etc/ssl/ca-bundle.pem',
+        '/etc/ssl/cert.pem'
+    ];
+    $ca_cert = null;
+    foreach ($system_cas as $path) {
+        if (file_exists($path)) {
+            $ca_cert = $path;
+            break;
+        }
+    }
+
+    if ($ca_cert) {
+        $conn->ssl_set(NULL, NULL, $ca_cert, NULL, NULL);
+    } else {
+        $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+    }
+
+    $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true);
+
+    $connected = @$conn->real_connect($host, $username, $password, $dbname, $port, NULL, MYSQLI_CLIENT_SSL);
+    if (!$connected) {
+        // Retry with SSL without strict host verification
+        $conn = mysqli_init();
+        $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
+        $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+        $connected = @$conn->real_connect($host, $username, $password, $dbname, $port, NULL, MYSQLI_CLIENT_SSL);
     }
 }
 
-if ($conn->connect_error) {
+if (!$conn || $conn->connect_error) {
     http_response_code(500);
-    die(json_encode(["error" => "Database connection failed: " . $conn->connect_error]));
+    $err = $conn ? $conn->connect_error : mysqli_connect_error();
+    die(json_encode(["error" => "Database connection failed: " . $err]));
 }
 ?>
