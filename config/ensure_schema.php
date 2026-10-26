@@ -1,7 +1,86 @@
 <?php
 
+function ensureUsersTable(mysqli $conn): void
+{
+    $query = "CREATE TABLE IF NOT EXISTS users (
+        user_id INT AUTO_INCREMENT PRIMARY KEY,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'customer',
+        referral_code VARCHAR(50) UNIQUE NULL,
+        referred_by_id INT NULL,
+        is_verified TINYINT(1) DEFAULT 0,
+        verification_token VARCHAR(255) NULL,
+        verification_expires_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_email (email),
+        INDEX idx_user_role (role)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    $conn->query($query);
+
+    // Seed default administrator account if none exists
+    $chkAdmin = $conn->query("SELECT user_id FROM users WHERE role = 'admin' LIMIT 1");
+    if ($chkAdmin && $chkAdmin->num_rows === 0) {
+        $adminPass = password_hash('Admin@123', PASSWORD_BCRYPT);
+        $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password, role, is_verified, referral_code) VALUES ('Super', 'Admin', 'admin@shopit.ng', ?, 'admin', 1, 'ADM-001')");
+        if ($stmt) {
+            $stmt->bind_param("s", $adminPass);
+            $stmt->execute();
+        }
+    }
+}
+
+function ensureCategoriesTable(mysqli $conn): void
+{
+    $query = "CREATE TABLE IF NOT EXISTS categories (
+        category_id INT AUTO_INCREMENT PRIMARY KEY,
+        category_name VARCHAR(150) NOT NULL UNIQUE,
+        parent_category_id INT NULL,
+        image_url VARCHAR(500) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cat_name (category_name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    $conn->query($query);
+}
+
+function ensureProductsTable(mysqli $conn): void
+{
+    $query = "CREATE TABLE IF NOT EXISTS products (
+        product_id INT AUTO_INCREMENT PRIMARY KEY,
+        product_name VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        stock_quantity INT NOT NULL DEFAULT 0,
+        category_id INT NULL,
+        image_url VARCHAR(500) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_prod_cat (category_id),
+        INDEX idx_prod_name (product_name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    $conn->query($query);
+}
+
+function ensureNewsletterTable(mysqli $conn): void
+{
+    $query = "CREATE TABLE IF NOT EXISTS newslettersubscribers (
+        subscriber_id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        status VARCHAR(50) DEFAULT 'active',
+        subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sub_email (email)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    $conn->query($query);
+}
+
 function ensureUserReferralColumns(mysqli $conn): void
 {
+    ensureUsersTable($conn);
     $columns = [
         'referral_code' => "ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE AFTER role",
         'referred_by_id' => "ALTER TABLE users ADD COLUMN referred_by_id INT NULL AFTER referral_code",
@@ -9,16 +88,8 @@ function ensureUserReferralColumns(mysqli $conn): void
 
     foreach ($columns as $column => $statement) {
         $check = $conn->query("SHOW COLUMNS FROM users LIKE '{$column}'");
-        if ($check === false) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Unable to inspect user account schema']);
-            exit;
-        }
-
-        if ($check->num_rows === 0 && !$conn->query($statement)) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Unable to prepare user account schema']);
-            exit;
+        if ($check !== false && $check->num_rows === 0) {
+            $conn->query($statement);
         }
     }
 }
@@ -258,6 +329,10 @@ function getSiteSettings(mysqli $conn): array
 
 function ensureAllSchemas(mysqli $conn): void
 {
+    ensureUsersTable($conn);
+    ensureCategoriesTable($conn);
+    ensureProductsTable($conn);
+    ensureNewsletterTable($conn);
     ensureUserReferralColumns($conn);
     ensureUserVerificationColumns($conn);
     ensurePasswordResetTable($conn);
