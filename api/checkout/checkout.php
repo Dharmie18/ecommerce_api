@@ -1,14 +1,18 @@
 <?php
+// ============================================================================
+// 1. INITIAL SETUP & DEPENDENCIES
+// ============================================================================
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
 require_once '../../config/mailer.php';
 require_once '../../config/ensure_schema.php';
 
-// Ensure all database tables and columns are up to date
 ensureAllSchemas($conn);
 
-// So the identity comes from the verified token 
+// ============================================================================
+// 2. AUTHENTICATION & INPUT VALIDATION
+// ============================================================================
 $user_id = getAuthenticatedUserId();
 
 $data = json_decode(file_get_contents("php://input"), true);
@@ -31,6 +35,9 @@ if (!in_array($payment_method, $validMethods)) {
     exit;
 }
 
+// ============================================================================
+// 3. INVENTORY AVAILABILITY & STOCK VERIFICATION
+// ============================================================================
 $conn->begin_transaction();
 
 try {
@@ -70,7 +77,9 @@ try {
         ];
     }
 
-    // Coupon Validation & Discount Application
+    // ========================================================================
+    // 4. COUPON VALIDATION & DISCOUNT COMPUTATION
+    // ========================================================================
     $appliedCoupon = null;
     $discount_amount = 0.00;
     $coupon_id = null;
@@ -108,6 +117,9 @@ try {
 
     $final_total = max(0, $subtotal - $discount_amount);
 
+    // ========================================================================
+    // 5. ORDER CREATION & STOCK DECREMENT
+    // ========================================================================
     $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address, coupon_id, discount_amount, order_status, order_date) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())");
     if (!$stmt) {
         $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address, coupon_id, discount_amount) VALUES (?, ?, ?, ?, ?)");
@@ -116,7 +128,6 @@ try {
     $stmt->execute();
     $order_id = $stmt->insert_id;
 
-    // Record line items & decrement stock
     foreach ($orderItemsData as $orderItem) {
         $stmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiid", $order_id, $orderItem['product_id'], $orderItem['quantity'], $orderItem['unit_price']);
@@ -134,19 +145,22 @@ try {
         $updCp->execute();
     }
 
-    // Record payment
+    // ========================================================================
+    // 6. PAYMENT RECORDING & CART CLEANUP
+    // ========================================================================
     $stmt = $conn->prepare("INSERT INTO payments (order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'Completed')");
     $stmt->bind_param("ids", $order_id, $final_total, $payment_method);
     $stmt->execute();
 
-    // Clear user cart items in database
     $stmtCart = $conn->prepare("DELETE FROM cart_items WHERE user_id = ?");
     $stmtCart->bind_param("i", $user_id);
     $stmtCart->execute();
 
     $conn->commit();
 
-    // Send Order Confirmation & Receipt Email
+    // ========================================================================
+    // 7. ORDER CONFIRMATION & RECEIPT EMAIL DISPATCH
+    // ========================================================================
     try {
         $userStmt = $conn->prepare("SELECT first_name, last_name, email FROM users WHERE user_id = ?");
         $userStmt->bind_param("i", $user_id);
@@ -177,9 +191,12 @@ try {
             sendShopItEmail($userRow['email'], $userRow['first_name'], "Order Confirmation #{$order_id} - ShopIt", $receiptHtml);
         }
     } catch (Exception $mailEx) {
-        // Mail failure should never fail the checkout transaction
+        // Non-blocking: Mail delivery failure should not void the successful transaction
     }
 
+    // ========================================================================
+    // 8. RESPONSE DELIVERY
+    // ========================================================================
     echo json_encode([
         "message" => "Order placed and payment recorded successfully",
         "order_id" => $order_id,
@@ -193,6 +210,9 @@ try {
     ]);
 
 } catch (Exception $e) {
+    // ========================================================================
+    // 9. TRANSACTION ROLLBACK & ERROR HANDLING
+    // ========================================================================
     $conn->rollback();
     http_response_code(500);
     echo json_encode(["error" => "Checkout failed: " . $e->getMessage()]);

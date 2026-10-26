@@ -1,4 +1,7 @@
 <?php
+// ============================================================================
+// 1. INITIAL SETUP & DEPENDENCIES
+// ============================================================================
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
@@ -7,6 +10,9 @@ require_once '../../config/ensure_schema.php';
 $user_id = getAuthenticatedUserId();
 ensureUserReferralColumns($conn);
 
+// ============================================================================
+// 2. PRIVACY & EMAIL MASKING HELPER
+// ============================================================================
 function maskEmail($email) {
     if (empty($email) || !str_contains($email, '@')) return '***@***.com';
     $parts = explode('@', $email);
@@ -36,7 +42,9 @@ $conn->query("CREATE TABLE IF NOT EXISTS coupons (
     INDEX idx_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-//  Fetch user's own referral code
+// ============================================================================
+// 3. USER PROFILE & REFERRAL CODE INITIALIZATION
+// ============================================================================
 $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, referral_code, referred_by_id FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -59,7 +67,9 @@ if (empty($refCode)) {
     $upd->execute();
 }
 
-// Fetch who referred this user (if any)
+// ============================================================================
+// 4. REFERRER ATTRIBUTION RESOLUTION
+// ============================================================================
 $referredBy = null;
 if (!empty($user['referred_by_id'])) {
     $stmtRefBy = $conn->prepare("SELECT first_name, last_name, referral_code FROM users WHERE user_id = ?");
@@ -74,7 +84,9 @@ if (!empty($user['referred_by_id'])) {
     }
 }
 
-// Fetch list of users who registered with this user's code
+// ============================================================================
+// 5. REFEREES ATTRIBUTED TO USER
+// ============================================================================
 $stmtRefs = $conn->prepare("SELECT user_id, first_name, last_name, email, created_at FROM users WHERE referred_by_id = ? ORDER BY created_at DESC");
 $stmtRefs->bind_param("i", $user_id);
 $stmtRefs->execute();
@@ -91,7 +103,9 @@ while ($r = $resRefs->fetch_assoc()) {
     ];
 }
 
-// Fetch user's coupons
+// ============================================================================
+// 6. USER REWARD COUPONS & EXPIRY COUNTDOWN COMPUTATION
+// ============================================================================
 $stmtC = $conn->prepare("SELECT coupon_id, code, discount_percent, min_items, is_used, used_at, expires_at, created_at FROM coupons WHERE user_id = ? ORDER BY is_used ASC, created_at DESC");
 $stmtC->bind_param("i", $user_id);
 $stmtC->execute();
@@ -104,7 +118,6 @@ $nowTime = time();
 while ($c = $resC->fetch_assoc()) {
     $expiresAtStr = $c['expires_at'];
     if (empty($expiresAtStr)) {
-        // Fallback default 7 days from creation
         $expiresAtStr = date('Y-m-d H:i:s', strtotime($c['created_at'] . ' +7 days'));
     }
 
@@ -132,6 +145,9 @@ while ($c = $resC->fetch_assoc()) {
     }
 }
 
+// ============================================================================
+// 7. AGGREGATED RESPONSE DELIVERY
+// ============================================================================
 echo json_encode([
     "referral_code" => $refCode,
     "referral_link" => "https://shopit-users.vercel.app/?ref=" . $refCode,
@@ -142,3 +158,4 @@ echo json_encode([
     "coupons" => $couponsList,
     "active_coupons" => $activeCouponsList
 ]);
+

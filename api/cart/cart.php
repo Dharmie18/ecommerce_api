@@ -1,4 +1,7 @@
 <?php
+// ============================================================================
+// 1. INITIAL SETUP & SCHEMA VERIFICATION
+// ============================================================================
 header('Content-Type: application/json');
 require_once '../../config/db.php';
 require_once '../../config/jwt.php';
@@ -6,6 +9,9 @@ require_once '../../config/ensure_schema.php';
 
 ensureCartTable($conn);
 
+// ============================================================================
+// 2. AUTHENTICATION & ROUTE DISPATCH
+// ============================================================================
 $user_id = getAuthenticatedUserId();
 $method  = $_SERVER['REQUEST_METHOD'];
 
@@ -14,6 +20,9 @@ if ($method === 'OPTIONS') {
     exit;
 }
 
+// ============================================================================
+// 3. GET: FETCH USER SHOPPING CART
+// ============================================================================
 if ($method === 'GET') {
     $stmt = $conn->prepare(
         "SELECT c.product_id, c.quantity, p.product_name, p.price, p.stock_quantity, p.image_url, p.category_id, cat.category_name
@@ -48,6 +57,9 @@ if ($method === 'GET') {
     exit;
 }
 
+// ============================================================================
+// 4. POST: SYNCHRONIZE CART (REPLACE OR MERGE)
+// ============================================================================
 if ($method === 'POST') {
     $data = json_decode(file_get_contents("php://input"), true);
     $items = $data['items'] ?? [];
@@ -164,6 +176,9 @@ if ($method === 'POST') {
     }
 }
 
+// ============================================================================
+// 5. DELETE: REMOVE ITEM OR CLEAR ENTIRE CART
+// ============================================================================
 if ($method === 'DELETE') {
     $product_id = isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
 
@@ -181,5 +196,8 @@ if ($method === 'DELETE') {
     exit;
 }
 
+// ============================================================================
+// 6. UNSUPPORTED HTTP METHOD HANDLER
+// ============================================================================
 http_response_code(405);
 echo json_encode(["error" => "Method not allowed"]);

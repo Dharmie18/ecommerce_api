@@ -1,6 +1,12 @@
 <?php
+// ============================================================================
+// 1. JWT CONFIGURATION & SECRET KEY
+// ============================================================================
 define('JWT_SECRET', 'x7K9pL2mQ8vR4tN6wZ1yB3sD5fG0hJ8cU2eA9iO7uP4rT6qW1x');
 
+// ============================================================================
+// 2. TOKEN ISSUANCE & CRYPTOGRAPHIC SIGNATURE
+// ============================================================================
 function generateJWT($user_id) {
     $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
     $payload = base64_encode(json_encode([
@@ -11,6 +17,9 @@ function generateJWT($user_id) {
     return "$header.$payload.$signature";
 }
 
+// ============================================================================
+// 3. TOKEN VERIFICATION & EXPIRATION CHECK
+// ============================================================================
 function verifyJWT($token) {
     $parts = explode('.', $token);
     if (count($parts) !== 3) return false;
@@ -26,6 +35,9 @@ function verifyJWT($token) {
     return $payloadData;
 }
 
+// ============================================================================
+// 4. AUTHENTICATED USER IDENTITY RESOLUTION
+// ============================================================================
 function getAuthenticatedUserId() {
     $headers = getallheaders();
     $authHeader = $headers['Authorization'] ?? '';
@@ -48,7 +60,9 @@ function getAuthenticatedUserId() {
     return $payload['user_id'];
 }
 
-// Nconfirms the logged-in user is specifically an admin, not just any user
+// ============================================================================
+// 5. ROLE ACCESS CONTROL & ADMIN GUARD
+// ============================================================================
 function requireAdmin($conn) {
     $user_id = getAuthenticatedUserId();
 
@@ -64,4 +78,4 @@ function requireAdmin($conn) {
     }
 
     return $user_id;
-}
+}

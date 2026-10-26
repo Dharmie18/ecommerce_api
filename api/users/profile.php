@@ -1,4 +1,7 @@
 <?php
+// ============================================================================
+// 1. INITIAL SETUP & SCHEMA VERIFICATION
+// ============================================================================
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
@@ -7,11 +10,15 @@ require_once '../../config/ensure_schema.php';
 ensureUserReferralColumns($conn);
 ensureUserVerificationColumns($conn);
 
+// ============================================================================
+// 2. AUTHENTICATION & ROUTE RESOLUTION
+// ============================================================================
 $method = $_SERVER['REQUEST_METHOD'];
-
-// Identity now comes ONLY from the verified token
 $user_id = getAuthenticatedUserId();
 
+// ============================================================================
+// 3. GET: FETCH USER PROFILE & ATTRIBUTES
+// ============================================================================
 if ($method === 'GET') {
 
     $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, role, is_verified, referral_code, referred_by_id, created_at FROM users WHERE user_id = ?");
@@ -38,6 +45,9 @@ if ($method === 'GET') {
         echo json_encode(["error" => "User not found"]);
     }
 
+// ============================================================================
+// 4. PUT: UPDATE USER PROFILE DETAILS
+// ============================================================================
 } elseif ($method === 'PUT') {
     $data = json_decode(file_get_contents("php://input"), true);
 
@@ -73,6 +83,9 @@ if ($method === 'GET') {
         echo json_encode(["error" => "Update failed: " . $stmt->error]);
     }
 
+// ============================================================================
+// 5. UNSUPPORTED HTTP METHOD HANDLER
+// ============================================================================
 } else {
     http_response_code(405);
     echo json_encode(["error" => "Method not allowed"]);

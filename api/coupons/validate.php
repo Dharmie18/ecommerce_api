@@ -1,4 +1,7 @@
 <?php
+// ============================================================================
+// 1. INITIAL SETUP & DEPENDENCIES
+// ============================================================================
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
@@ -6,6 +9,9 @@ require_once '../../config/ensure_schema.php';
 
 ensureCouponsTable($conn);
 
+// ============================================================================
+// 2. AUTHENTICATION & INPUT VALIDATION
+// ============================================================================
 $user_id = getAuthenticatedUserId();
 
 $data = json_decode(file_get_contents("php://input"), true);
@@ -18,6 +24,9 @@ if (empty($code)) {
     exit;
 }
 
+// ============================================================================
+// 3. COUPON LOOKUP & OWNERSHIP VERIFICATION
+// ============================================================================
 $stmt = $conn->prepare("SELECT coupon_id, user_id, code, discount_percent, min_items, is_used, expires_at, created_at FROM coupons WHERE code = ?");
 $stmt->bind_param("s", $code);
 $stmt->execute();
@@ -41,6 +50,9 @@ if ($coupon['is_used']) {
     exit;
 }
 
+// ============================================================================
+// 4. EXPIRATION & MINIMUM CART ITEMS VALIDATION
+// ============================================================================
 $expiresAt = $coupon['expires_at'] ?: date('Y-m-d H:i:s', strtotime($coupon['created_at'] . ' +7 days'));
 if (strtotime($expiresAt) < time()) {
     http_response_code(400);
@@ -57,6 +69,9 @@ if ($cart_items_count < $minItems) {
     exit;
 }
 
+// ============================================================================
+// 5. SUCCESS RESPONSE DISPATCH
+// ============================================================================
 echo json_encode([
     "valid" => true,
     "coupon_id" => (int)$coupon['coupon_id'],
@@ -73,3 +88,4 @@ echo json_encode([
     ],
     "message" => "{$coupon['discount_percent']}% discount successfully applied!"
 ]);
+

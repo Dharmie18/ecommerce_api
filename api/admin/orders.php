@@ -2,8 +2,10 @@
 header('Content-Type: application/json');
 require '../../config/db.php';
 require '../../config/jwt.php';
+require_once '../../config/ensure_schema.php';
 
-requireAdmin($conn); 
+requireAdmin($conn);
+ensureAllSchemas($conn);
 
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
@@ -16,7 +18,7 @@ $order_id = is_numeric($path) ? intval($path) : null;
 if ($method === 'GET') {
 
     if ($order_id) {
-        $stmt = $conn->prepare("SELECT * FROM orders WHERE order_id = ?");
+        $stmt = $conn->prepare("SELECT o.*, u.first_name, u.last_name, u.email AS customer_email, CONCAT(u.first_name, ' ', u.last_name) AS customer_name FROM orders o LEFT JOIN users u ON o.user_id = u.user_id WHERE o.order_id = ?");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         $order = $stmt->get_result()->fetch_assoc();
@@ -29,7 +31,7 @@ if ($method === 'GET') {
         }
 
     } else {
-        $result = $conn->query("SELECT * FROM orders");
+        $result = $conn->query("SELECT o.*, u.first_name, u.last_name, u.email AS customer_email, CONCAT(u.first_name, ' ', u.last_name) AS customer_name FROM orders o LEFT JOIN users u ON o.user_id = u.user_id ORDER BY o.order_id DESC");
         $orders = [];
         while ($row = $result->fetch_assoc()) {
             $orders[] = $row;

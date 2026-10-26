@@ -180,6 +180,82 @@ function ensurePaymentsSchema(mysqli $conn): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 }
 
+function ensureSettingsTable(mysqli $conn): void
+{
+    // Create site settings key-value store if not exists
+    $query = "CREATE TABLE IF NOT EXISTS site_settings (
+        setting_key VARCHAR(64) PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    $conn->query($query);
+
+    // Seed default branding and contact configurations
+    $defaults = [
+        'company_name'      => 'ShopIt',
+        'tagline'           => 'Direct Retail & Wholesale Marketplace for Nigeria',
+        'logo_url'          => '/favicon.png',
+        'support_phone'     => '+234 800 746 748',
+        'whatsapp_number'   => '+234800746748',
+        'primary_email'     => 'support@shopit.ng',
+        'office_address'    => 'Plot 14B, Commercial Avenue, Ikeja, Lagos State, Nigeria',
+        'rc_number'         => 'RC: 1894203',
+        'currency_symbol'   => '₦',
+        'currency_code'     => 'NGN',
+        'vat_percent'       => '7.5',
+        'social_twitter'    => 'https://x.com/shopit_ng',
+        'social_instagram'  => 'https://instagram.com/shopit_ng',
+        'social_facebook'   => 'https://facebook.com/shopit_ng',
+        'social_linkedin'   => 'https://linkedin.com/company/shopit-ng',
+        'social_whatsapp'   => 'https://wa.me/234800746748'
+    ];
+
+    $checkStmt = $conn->prepare("SELECT setting_key FROM site_settings WHERE setting_key = ?");
+    $insertStmt = $conn->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?)");
+
+    foreach ($defaults as $key => $value) {
+        $checkStmt->bind_param("s", $key);
+        $checkStmt->execute();
+        if ($checkStmt->get_result()->num_rows === 0) {
+            $insertStmt->bind_param("ss", $key, $value);
+            $insertStmt->execute();
+        }
+    }
+}
+
+// Fetch structured site settings object
+function getSiteSettings(mysqli $conn): array
+{
+    ensureSettingsTable($conn);
+    $result = $conn->query("SELECT setting_key, setting_value FROM site_settings");
+    $raw = [];
+    while ($row = $result->fetch_assoc()) {
+        $raw[$row['setting_key']] = $row['setting_value'];
+    }
+
+    return [
+        'company_name'    => $raw['company_name'] ?? 'ShopIt',
+        'tagline'         => $raw['tagline'] ?? 'Direct Retail & Wholesale Marketplace for Nigeria',
+        'logo_url'        => $raw['logo_url'] ?? '/favicon.png',
+        'support_phone'   => $raw['support_phone'] ?? '+234 800 746 748',
+        'whatsapp_number' => $raw['whatsapp_number'] ?? '+234800746748',
+        'primary_email'   => $raw['primary_email'] ?? 'support@shopit.ng',
+        'office_address'  => $raw['office_address'] ?? 'Plot 14B, Commercial Avenue, Ikeja, Lagos State, Nigeria',
+        'rc_number'       => $raw['rc_number'] ?? 'RC: 1894203',
+        'currency_symbol' => $raw['currency_symbol'] ?? '₦',
+        'currency_code'   => $raw['currency_code'] ?? 'NGN',
+        'vat_percent'     => floatval($raw['vat_percent'] ?? 7.5),
+        'socials'         => [
+            'twitter'   => $raw['social_twitter'] ?? 'https://x.com/shopit_ng',
+            'instagram' => $raw['social_instagram'] ?? 'https://instagram.com/shopit_ng',
+            'facebook'  => $raw['social_facebook'] ?? 'https://facebook.com/shopit_ng',
+            'linkedin'  => $raw['social_linkedin'] ?? 'https://linkedin.com/company/shopit-ng',
+            'whatsapp'  => $raw['social_whatsapp'] ?? 'https://wa.me/234800746748'
+        ]
+    ];
+}
+
 function ensureAllSchemas(mysqli $conn): void
 {
     ensureUserReferralColumns($conn);
@@ -191,6 +267,8 @@ function ensureAllSchemas(mysqli $conn): void
     ensureOrdersSchema($conn);
     ensureOrderItemsSchema($conn);
     ensurePaymentsSchema($conn);
+    ensureSettingsTable($conn);
 }
+
 
 
