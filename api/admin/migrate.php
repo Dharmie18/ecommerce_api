@@ -1,20 +1,20 @@
 <?php
 header('Content-Type: application/json');
-require '../../config/db.php';
+require_once '../../config/db.php';
+require_once '../../config/ensure_schema.php';
+
+// Ensure all database schemas and tables are present
+ensureAllSchemas($conn);
 
 $results = [];
 
-// users table: referral_code & referred_by_id
+// Referral columns verification
 $checkCol = mysqli_query($conn, "SHOW COLUMNS FROM users LIKE 'referral_code'");
 if (mysqli_num_rows($checkCol) === 0) {
     $q1 = "ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE AFTER role, ADD COLUMN referred_by_id INT NULL AFTER referral_code";
     if (mysqli_query($conn, $q1)) {
         $results[] = "Added referral_code and referred_by_id to users table.";
-    } else {
-        $results[] = "Error adding referral columns: " . mysqli_error($conn);
     }
-} else {
-    $results[] = "users table already has referral columns.";
 }
 
 // Generate referral codes for users lacking one
@@ -29,57 +29,21 @@ if ($resUsers) {
         mysqli_query($conn, "UPDATE users SET referral_code = '{$code}' WHERE user_id = {$u['user_id']}");
         $genCount++;
     }
-    $results[] = "Generated {$genCount} referral codes for existing users.";
-}
-
-// Create coupons table
-$qCoupons = "CREATE TABLE IF NOT EXISTS coupons (
-    coupon_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    discount_percent DECIMAL(5,2) NOT NULL,
-    min_items INT DEFAULT 3,
-    is_used TINYINT(1) DEFAULT 0,
-    order_id INT NULL,
-    used_at TIMESTAMP NULL,
-    expires_at DATETIME NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user (user_id),
-    INDEX idx_code (code)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-if (mysqli_query($conn, $qCoupons)) {
-    $results[] = "coupons table verified.";
-} else {
-    $results[] = "Error creating coupons table: " . mysqli_error($conn);
-}
-
-// Ensure expires_at column exists and backfill 7 days
-$checkExp = mysqli_query($conn, "SHOW COLUMNS FROM coupons LIKE 'expires_at'");
-if (mysqli_num_rows($checkExp) === 0) {
-    mysqli_query($conn, "ALTER TABLE coupons ADD COLUMN expires_at DATETIME NULL AFTER used_at");
-    mysqli_query($conn, "UPDATE coupons SET expires_at = DATE_ADD(created_at, INTERVAL 7 DAY) WHERE expires_at IS NULL");
-    $results[] = "Added 7-day expires_at column to coupons table.";
-} else {
-    mysqli_query($conn, "UPDATE coupons SET expires_at = DATE_ADD(created_at, INTERVAL 7 DAY) WHERE expires_at IS NULL");
-}
-
-// orders table: coupon_id & discount_amount
-$checkOrdCol = mysqli_query($conn, "SHOW COLUMNS FROM orders LIKE 'discount_amount'");
-if (mysqli_num_rows($checkOrdCol) === 0) {
-    $qOrd = "ALTER TABLE orders ADD COLUMN coupon_id INT NULL AFTER shipping_address, ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0.00 AFTER coupon_id";
-    if (mysqli_query($conn, $qOrd)) {
-        $results[] = "Added coupon_id and discount_amount to orders table.";
-    } else {
-        $results[] = "Error altering orders table: " . mysqli_error($conn);
+    if ($genCount > 0) {
+        $results[] = "Generated {$genCount} referral codes for existing users.";
     }
-} else {
-    $results[] = "orders table already has discount columns.";
 }
 
-// 5. Categories: Home & Office Furniture, Kitchen Utensils & Cookware
+// Seed product categories
 $newCategories = [
+    'Food Staples & Groceries',
+    'Industrial Tools & Hardware',
+    'Solar & Renewable Power',
+    'Office Stationery & Tech',
     'Home & Office Furniture',
-    'Kitchen Utensils & Cookware'
+    'Kitchen Utensils & Cookware',
+    'Electrical & Electronics',
+    'Security & Surveillance'
 ];
 
 foreach ($newCategories as $catName) {
@@ -88,18 +52,16 @@ foreach ($newCategories as $catName) {
     if (mysqli_num_rows($chk) === 0) {
         mysqli_query($conn, "INSERT INTO categories (category_name) VALUES ('{$esc}')");
         $results[] = "Created Category: {$catName}";
-    } else {
-        $results[] = "Category exists: {$catName}";
     }
 }
 
 $resFurn = mysqli_query($conn, "SELECT category_id FROM categories WHERE category_name = 'Home & Office Furniture'");
-$furnId = ($resFurn && $row = mysqli_fetch_assoc($resFurn)) ? $row['category_id'] : 11;
+$furnId = ($resFurn && $row = mysqli_fetch_assoc($resFurn)) ? $row['category_id'] : 1;
 
 $resKitch = mysqli_query($conn, "SELECT category_id FROM categories WHERE category_name = 'Kitchen Utensils & Cookware'");
-$kitchId = ($resKitch && $row = mysqli_fetch_assoc($resKitch)) ? $row['category_id'] : 12;
+$kitchId = ($resKitch && $row = mysqli_fetch_assoc($resKitch)) ? $row['category_id'] : 2;
 
-// 6. Products
+// Seed catalog products
 $newProducts = [
     [
         'name' => 'Nordic Solid Oak Executive Office Desk (160cm)',
@@ -175,12 +137,186 @@ foreach ($newProducts as $np) {
         mysqli_stmt_bind_param($stmtP, "sssdis", $np['name'], $np['desc'], $np['image'], $np['price'], $np['stock'], $np['cat_id']);
         mysqli_stmt_execute($stmtP);
         $results[] = "Added product: {$np['name']}";
-    } else {
-        $results[] = "Product exists: {$np['name']}";
     }
+}
+
+// Seed newsletter subscribers
+$subscribers = [
+    'procurement@dangltd.ng',
+    'ibrahim.k@apexhaul.com',
+    'stores@firstchoice.ng',
+    'adesola.adeyemi@primeventures.ng',
+    'mercy.o@lagosretailers.org',
+    'info@novatechsolar.ng',
+    'purchase@bellasuperstores.com',
+    'chidi.okafor@enugutrade.com',
+    'folake.alabi@ibadancorporate.ng',
+    'zainab.danladi@kadunawarehouse.com'
+];
+
+$stmtSub = $conn->prepare("INSERT IGNORE INTO newslettersubscribers (email, status, subscribed_at) VALUES (?, 'active', NOW())");
+$subCount = 0;
+foreach ($subscribers as $subEmail) {
+    $chkSub = $conn->prepare("SELECT subscriber_id FROM newslettersubscribers WHERE email = ?");
+    $chkSub->bind_param("s", $subEmail);
+    $chkSub->execute();
+    if ($chkSub->get_result()->num_rows === 0) {
+        $stmtSub->bind_param("s", $subEmail);
+        $stmtSub->execute();
+        $subCount++;
+    }
+}
+if ($subCount > 0) {
+    $results[] = "Seeded {$subCount} verified newsletter subscribers.";
+}
+
+// Seed sample customer accounts for orders
+$customers = [
+    [
+        'first_name' => 'Emeka',
+        'last_name'  => 'Nwosu',
+        'email'      => 'emeka.nwosu@apexventures.ng',
+        'password'   => password_hash('Customer@123', PASSWORD_BCRYPT),
+        'role'       => 'customer',
+        'ref_code'   => 'EME-APEX1'
+    ],
+    [
+        'first_name' => 'Amina',
+        'last_name'  => 'Bello',
+        'email'      => 'amina.bello@abujaenterprises.com',
+        'password'   => password_hash('Customer@123', PASSWORD_BCRYPT),
+        'role'       => 'customer',
+        'ref_code'   => 'AMI-ABJ02'
+    ],
+    [
+        'first_name' => 'Tunde',
+        'last_name'  => 'Bakare',
+        'email'      => 'tunde.bakare@ibadanlogistics.ng',
+        'password'   => password_hash('Customer@123', PASSWORD_BCRYPT),
+        'role'       => 'customer',
+        'ref_code'   => 'TUN-IBD03'
+    ],
+    [
+        'first_name' => 'Fatima',
+        'last_name'  => 'Garba',
+        'email'      => 'fatima.garba@kanotrade.org',
+        'password'   => password_hash('Customer@123', PASSWORD_BCRYPT),
+        'role'       => 'customer',
+        'ref_code'   => 'FAT-KAN04'
+    ]
+];
+
+$userIds = [];
+$stmtUser = $conn->prepare("INSERT INTO users (first_name, last_name, email, password, role, is_verified, referral_code) VALUES (?, ?, ?, ?, ?, 1, ?)");
+
+foreach ($customers as $c) {
+    $chk = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
+    $chk->bind_param("s", $c['email']);
+    $chk->execute();
+    $found = $chk->get_result()->fetch_assoc();
+    if ($found) {
+        $userIds[$c['email']] = $found['user_id'];
+    } else {
+        $stmtUser->bind_param("ssssss", $c['first_name'], $c['last_name'], $c['email'], $c['password'], $c['role'], $c['ref_code']);
+        $stmtUser->execute();
+        $userIds[$c['email']] = $stmtUser->insert_id;
+        $results[] = "Created customer user: {$c['first_name']} {$c['last_name']}";
+    }
+}
+
+// Seed sample orders, items, and payments
+$sampleOrders = [
+    [
+        'email' => 'emeka.nwosu@apexventures.ng',
+        'amount' => 580000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-5 days')),
+        'address' => 'Plot 88, Adeola Odeku Street, Victoria Island, Lagos State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'amina.bello@abujaenterprises.com',
+        'amount' => 385000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-18 days')),
+        'address' => 'Suite 302, Central Business District, Abuja, FCT',
+        'method' => 'Credit Card'
+    ],
+    [
+        'email' => 'tunde.bakare@ibadanlogistics.ng',
+        'amount' => 240000.00,
+        'status' => 'Shipped',
+        'date' => date('Y-m-d H:i:s', strtotime('-2 days')),
+        'address' => '12 Ring Road, Challenge, Ibadan, Oyo State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'fatima.garba@kanotrade.org',
+        'amount' => 745000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-45 days')),
+        'address' => '44 Bompai Road, Commercial Area, Kano State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'emeka.nwosu@apexventures.ng',
+        'amount' => 195000.00,
+        'status' => 'Pending',
+        'date' => date('Y-m-d H:i:s', strtotime('-1 hour')),
+        'address' => 'Plot 88, Adeola Odeku Street, Victoria Island, Lagos State',
+        'method' => 'Bank Transfer'
+    ]
+];
+
+// Fetch available product IDs for linking order items
+$prodRes = $conn->query("SELECT product_id, price FROM products LIMIT 5");
+$availableProducts = [];
+if ($prodRes) {
+    while ($pr = $prodRes->fetch_assoc()) {
+        $availableProducts[] = $pr;
+    }
+}
+
+$orderCount = 0;
+foreach ($sampleOrders as $so) {
+    $uid = $userIds[$so['email']] ?? null;
+    if (!$uid) continue;
+
+    // Check if an order already exists for this user on this address
+    $chkOrd = $conn->prepare("SELECT order_id FROM orders WHERE user_id = ? AND total_amount = ?");
+    $chkOrd->bind_param("id", $uid, $so['amount']);
+    $chkOrd->execute();
+    if ($chkOrd->get_result()->num_rows === 0) {
+        $stmtOrd = $conn->prepare("INSERT INTO orders (user_id, total_amount, order_status, order_date, shipping_address) VALUES (?, ?, ?, ?, ?)");
+        $stmtOrd->bind_param("idsss", $uid, $so['amount'], $so['status'], $so['date'], $so['address']);
+        if ($stmtOrd->execute()) {
+            $newOrderId = $stmtOrd->insert_id;
+            $orderCount++;
+
+            // Create matching payment record
+            $paymentStatus = ($so['status'] === 'Cancelled') ? 'Failed' : (($so['status'] === 'Pending') ? 'Pending' : 'Completed');
+            $stmtPay = $conn->prepare("INSERT INTO payments (order_id, amount, payment_method, payment_status, payment_date) VALUES (?, ?, ?, ?, ?)");
+            $stmtPay->bind_param("idsss", $newOrderId, $so['amount'], $so['method'], $paymentStatus, $so['date']);
+            $stmtPay->execute();
+
+            // Create sample order item if product exists
+            if (!empty($availableProducts)) {
+                $chosenProduct = $availableProducts[array_rand($availableProducts)];
+                $qty = 1;
+                $stmtItem = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
+                $stmtItem->bind_param("iiid", $newOrderId, $chosenProduct['product_id'], $qty, $so['amount']);
+                $stmtItem->execute();
+            }
+        }
+    }
+}
+
+if ($orderCount > 0) {
+    $results[] = "Seeded {$orderCount} live customer orders and associated payments.";
 }
 
 echo json_encode([
     'status' => 'success',
+    'timestamp' => date('Y-m-d H:i:s'),
     'results' => $results
 ]);
