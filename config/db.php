@@ -14,7 +14,7 @@ $host     = getenv('DB_HOST') ?: "localhost";
 $username = getenv('DB_USER') ?: "root";
 $password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : "");
 $is_local = in_array(strtolower($host), ['localhost', '127.0.0.1', '::1']);
-$dbname   = getenv('DB_NAME') ?: ($is_local ? "ecommerce" : "defaultdb");
+$dbname   = getenv('DB_NAME') ?: "ecommerce";
 $port     = getenv('DB_PORT') ? intval(getenv('DB_PORT')) : 3306;
 
 if ($is_local) {
