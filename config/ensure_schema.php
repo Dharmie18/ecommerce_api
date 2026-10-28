@@ -39,14 +39,14 @@ function ensureUsersTable(mysqli $conn): void
             'last_name'  => 'Admin',
             'email'      => 'admin@shopit.co',
             'password'   => 'Gx$925]b{*_9',
-            'code'       => 'ADM-001'
+            'code'       => 'ADM-CO'
         ],
         [
             'first_name' => 'Store',
             'last_name'  => 'Admin',
             'email'      => 'admin@shopit.ng',
             'password'   => 'Admin@123',
-            'code'       => 'ADM-002'
+            'code'       => 'ADM-001'
         ]
     ];
 

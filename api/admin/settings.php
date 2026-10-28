@@ -50,7 +50,8 @@ if ($method === 'PUT') {
 
     foreach ($data as $key => $val) {
         if (in_array($key, $allowedKeys)) {
-            $stmt->bind_param("ss", $key, strval($val));
+            $stringVal = strval($val);
+            $stmt->bind_param("ss", $key, $stringVal);
             $stmt->execute();
         }
     }
