@@ -1,17 +1,19 @@
-# ShopIt — REST API Backend
+# ShopIt - REST API Backend Engine
 
-> **Production PHP 8.x + MySQL REST API Engine**  
-> Native stateless backend providing JWT-secured commerce services for the ShopIt Storefront and Admin Control Room. Zero mock data.
+> **Production PHP 8.x + MySQL / TiDB Cloud REST API Engine**  
+> Native stateless backend providing JWT-secured commerce services for the ShopIt Storefront and Admin Control Room. Zero hardcoded mock data.
 
 ---
 
-## Architecture & Overview
+## System Architecture
 
-- **Base URL**: `http://localhost/ecommerce-api`
-- **Server Runtime**: Apache 2.4+ & PHP 8.x (via XAMPP)
-- **Database**: MySQL / MariaDB (Database: `ecommerce` or `ecommerce_db`)
+- **Base URL (Local)**: `http://localhost/ecommerce-api`
+- **Base URL (Production)**: `https://ecommerce-api-eibj.onrender.com`
+- **Server Runtime**: Apache 2.4+ & PHP 8.x (via XAMPP / Docker on Render)
+- **Database**: MySQL 8.x / TiDB Cloud Distributed SQL (Database: `ecommerce` / `ecommerce_db`)
 - **Authentication**: Stateless JSON Web Tokens (`Authorization: Bearer <token>`)
-- **Schema Auto-Migration**: Automated table and column verification in `config/ensure_schema.php`
+- **Dynamic White-Labeling**: Centralized `site_settings` table managed via Admin API; zero hardcoded frontend or backend fallback strings.
+- **Auto-Schema Migration**: Idempotent table, column, and seed synchronization via `config/ensure_schema.php`.
 
 ---
 
@@ -20,157 +22,120 @@
 ```
 ecommerce-api/
 ├── api/
-│   ├── admin/             # Operations management endpoints (Role: admin)
-│   ├── cart/              # User shopping cart synchronization
-│   ├── categories/        # Public product taxonomy
-│   ├── checkout/          # Orders, payments & dynamic virtual accounts
-│   ├── coupons/           # Referral & promotional coupon validation
-│   ├── newsletter/        # Trade subscriber management
-│   ├── products/          # Public inventory catalog
+│   ├── admin/             # Operations & bootstrap endpoints (Role: admin)
+│   │   ├── init.php       # Unified admin bootstrap (settings + reports in 1 call)
+│   │   ├── settings.php   # Dynamic settings read & write (PUT / GET)
+│   │   ├── product.php    # Admin product CRUD & inventory updates
+│   │   ├── orders.php     # Order fulfillment queue & status updates
+│   │   ├── payments.php   # Payment audit logs & manual overrides
+│   │   ├── users.php      # Customer & staff administration
+│   │   └── migrate.php    # Database seeder (categories, products, customers, orders)
+│   ├── redirect/          # HTTP 302 Redirection services
+│   │   ├── privacy.php    # Redirects to configured Privacy Policy URL
+│   │   └── delivery-returns.php # Redirects to Delivery & Returns URL
+│   ├── storefront/        # Unified storefront bootstrap
+│   │   └── init.php       # Fast bootstrap: settings + categories + products + stats + past orders
+│   ├── cart/              # User shopping bag synchronization
+│   ├── categories/        # Public product taxonomy (14 categories)
+│   ├── checkout/          # Atomic checkout & virtual bank accounts
+│   ├── coupons/           # Promotional & referral coupon validation
+│   ├── newsletter/        # Trade newsletter subscribers
+│   ├── products/          # Public inventory catalog with supply intake dates
 │   ├── referrals/         # Growth engine & referral attribution
-│   ├── stats/             # Public live platform metrics
-│   └── users/             # Authentication, verification, passwords & orders
+│   ├── stats/             # Live platform metrics & delivered order counts
+│   └── users/             # Auth, verification, OTP password reset & order history
 ├── config/
-│   ├── db.php             # MySQL database connection & CORS headers
-│   ├── jwt.php            # JWT generation, signature verification & admin guard
-│   ├── ensure_schema.php  # Idempotent database schema validator
+│   ├── db.php             # MySQL & TiDB Cloud SSL connection with CORS
+│   ├── jwt.php            # HMAC-SHA256 JWT generation & admin guards
+│   ├── ensure_schema.php  # Automated idempotent database schema validator
 │   └── mailer.php         # Socket-based SMTP & HTML receipt dispatcher
 ├── index.php              # Health check & service discovery endpoint
-└── ecommerce_schema_data.sql # Initial database structure and seed data
+└── README.md
 ```
 
 ---
 
-## Complete Grouped API Reference
+## Unified Bootstrap & Discovery Endpoints
 
-The 27 API endpoints are categorized into **6 core business domains**:
+### 1. `GET /api/storefront/init.php`
+Fetches the entire storefront bootstrap state in **one network round-trip**:
+- `settings`: Active company branding, currency, tax rates, support numbers, office address, and policy URLs from `site_settings`.
+- `categories`: Full taxonomy across 14 industry sectors.
+- `products`: Catalog items with pricing, description, stock quantities, and `created_at` (date added to supply).
+- `stats`: Verified platform KPIs (delivered orders, total SKUs, active categories, subscribers, sales volume).
+- `recent_dispatches`: Real past orders from the database (order number, destination city/state, item summary, order date) powering the Storefront Hero 3D Fulfillment Matrix.
 
-### 1. Authentication & Identity (`api/users/`)
+### 2. `GET /api/admin/init.php`
+Fetches all operational management data in one call:
+- `settings`: All site configuration parameters.
+- `reports`: Low stock alerts (`stock < 10`), top 10 customers by lifetime spend, and monthly sales volume.
 
-| Method | Endpoint | Auth Required | Description |
+---
+
+## Complete API Endpoints Reference
+
+### Authentication & Customer Accounts (`api/users/`)
+| Method | Endpoint | Auth | Description |
 |:---|:---|:---:|:---|
-| `POST` | `/api/users/register.php` | No | Register new user. Automatically generates a unique referral code, awards a 20% welcome coupon, and dispatches an activation email. |
-| `POST` | `/api/users/login.php` | No | Authenticate user credentials, issue JWT Bearer token, and dispatch login security notification email. |
-| `GET` | `/api/users/profile.php` | Yes (Bearer) | Retrieve profile of the currently authenticated user (`user_id`, `name`, `email`, `role`, `is_verified`). |
-| `PUT` | `/api/users/profile.php` | Yes (Bearer) | Update profile details (first name, last name, phone, etc.). |
-| `POST` | `/api/users/verify-email.php` | No | Confirm email address using 32-byte cryptographic token. Auto-issues login JWT upon confirmation. |
-| `POST` | `/api/users/resend-verification.php` | No | Re-issue a fresh email verification link. |
-| `POST` | `/api/users/forgot-password.php` | No | Generate a secure 6-digit OTP code and dispatch it to user's registered email. |
-| `POST` | `/api/users/verify-reset-code.php` | No | Verify 6-digit OTP code prior to allowing password reset. |
-| `POST` | `/api/users/reset-password.php` | No | Validate OTP, hash new password using `PASSWORD_BCRYPT`, update user, and invalidate OTP. |
+| `POST` | `/api/users/register.php` | No | User registration with referral attribution and welcome coupon. |
+| `POST` | `/api/users/login.php` | No | Authenticate user, issue JWT Bearer token, dispatch login alert. |
+| `GET` | `/api/users/profile.php` | Bearer | Retrieve authenticated user profile. |
+| `PUT` | `/api/users/profile.php` | Bearer | Update user profile and shipping details. |
+| `POST` | `/api/users/verify-email.php` | No | Confirm email address with token; auto-issues login token. |
+| `POST` | `/api/users/forgot-password.php` | No | Generate 6-digit OTP and send via email. |
+| `POST` | `/api/users/reset-password.php` | No | Validate OTP and hash new password using `PASSWORD_BCRYPT`. |
+| `GET` | `/api/users/orders.php` | Bearer | Retrieve customer's personal order history and tracking statuses. |
 
----
-
-### 2. Public Storefront & Catalog (`api/products/`, `api/categories/`, `api/stats/`)
-
-| Method | Endpoint | Auth Required | Description |
+### Catalog & Discovery (`api/products/`, `api/categories/`, `api/stats/`)
+| Method | Endpoint | Auth | Description |
 |:---|:---|:---:|:---|
-| `GET` | `/api/products/products.php` | No | Fetch all active products including stock quantity, unit prices in Naira (`₦`), and category mappings. |
-| `GET` | `/api/products/products.php/{id}` | No | Fetch detailed information for a single product by numeric ID. |
-| `GET` | `/api/categories/categories.php` | No | Fetch all product categories and taxonomies. |
-| `GET` | `/api/categories/categories.php/{id}` | No | Fetch a single category by numeric ID. |
-| `GET` | `/api/stats/overview.php` | No | Real-time aggregate platform stats: delivered orders, live SKUs, active categories, total trade subscribers, and gross sales volume. |
+| `GET` | `/api/products/products.php` | No | Fetch all active catalog products including `created_at` supply intake dates. |
+| `GET` | `/api/products/products.php/{id}` | No | Fetch single product specification by ID. |
+| `GET` | `/api/categories/categories.php` | No | List all 14 product categories. |
+| `GET` | `/api/stats/overview.php` | No | Live platform overview KPIs. |
 
----
-
-### 3. Shopping Cart & Checkout (`api/cart/`, `api/checkout/`)
-
-| Method | Endpoint | Auth Required | Description |
+### Cart & Orders (`api/cart/`, `api/checkout/`)
+| Method | Endpoint | Auth | Description |
 |:---|:---|:---:|:---|
-| `GET` | `/api/cart/cart.php` | Yes (Bearer) | Retrieve user's saved shopping cart line items with product details and current inventory levels. |
-| `POST` | `/api/cart/cart.php` | Yes (Bearer) | Synchronize cart items with database in either `replace` or `merge` mode. |
-| `DELETE` | `/api/cart/cart.php` | Yes (Bearer) | Remove single item (`?product_id={id}`) or clear entire cart when no ID is provided. |
-| `POST` | `/api/checkout/checkout.php` | Yes (Bearer) | Atomic checkout: verifies stock, creates order, deducts inventory, redeems coupon, records payment, empties cart, and sends HTML receipt email. |
-| `POST` | `/api/checkout/virtual-account.php` | Yes (Bearer) | Generates a 30-minute dynamic 10-digit virtual bank account (Providus, Wema, Sterling) for direct bank transfer settlement. |
+| `GET` | `/api/cart/cart.php` | Bearer | Retrieve saved shopping cart lines with inventory levels. |
+| `POST` | `/api/cart/cart.php` | Bearer | Sync cart with database (`replace` or `merge` mode). |
+| `DELETE` | `/api/cart/cart.php` | Bearer | Remove item or empty shopping cart. |
+| `POST` | `/api/checkout/checkout.php` | Bearer | Atomic checkout transaction: verify stock, create order, deduct stock, redeem coupon, record payment, empty cart, and send receipt. |
+| `POST` | `/api/checkout/virtual-account.php` | Bearer | Generate 30-minute dynamic virtual bank account (Providus, Wema, Sterling). |
 
----
-
-### 4. Growth, Referrals & Coupons (`api/referrals/`, `api/coupons/`, `api/newsletter/`)
-
-| Method | Endpoint | Auth Required | Description |
+### Referrals & Growth (`api/referrals/`, `api/coupons/`, `api/newsletter/`)
+| Method | Endpoint | Auth | Description |
 |:---|:---|:---:|:---|
-| `GET` | `/api/referrals/my-referrals.php` | Yes (Bearer) | Returns user's referral code, shareable link, referred users list (with masked emails), and active coupons with live expiration countdowns. |
-| `POST` | `/api/coupons/validate.php` | Yes (Bearer) | Validates coupon code, verifies ownership, minimum items requirement (default 3 items), and expiration date before applying discount. |
-| `POST` | `/api/newsletter/subscribe.php` | No | Subscribes an email address to trade newsletter dispatches. Prevents duplicate registrations. |
+| `GET` | `/api/referrals/my-referrals.php` | Bearer | Customer referral code, link, referred user tree, and active coupons. |
+| `POST` | `/api/coupons/validate.php` | Bearer | Validate coupon ownership, minimum item threshold, and expiration. |
+| `POST` | `/api/newsletter/subscribe.php` | No | Subscribe trade email to active distribution list. |
 
----
-
-### 5. Customer Orders (`api/users/orders.php`)
-
-| Method | Endpoint | Auth Required | Description |
+### Admin Operations (`api/admin/`)
+| Method | Endpoint | Auth | Description |
 |:---|:---|:---:|:---|
-| `GET` | `/api/users/orders.php` | Yes (Bearer) | Fetch chronological order history for the logged-in customer, complete with line items and fulfillment status. |
-| `GET` | `/api/users/orders.php/{id}` | Yes (Bearer) | Fetch full invoice details and line items for a specific order owned by the user. |
+| `GET` | `/api/admin/init.php` | Admin | One-call dashboard bootstrap: settings + low stock + top customers + monthly sales. |
+| `GET` | `/api/admin/settings.php` | Admin | Read all site settings. |
+| `PUT` | `/api/admin/settings.php` | Admin | Persist updated settings (company info, contacts, legal URLs, socials). |
+| `GET` / `POST` / `PUT` / `DELETE` | `/api/admin/product.php` | Admin | Complete product CRUD with pricing and inventory control. |
+| `GET` / `PUT` | `/api/admin/orders.php` | Admin | View orders queue and update statuses (`Pending` $\to$ `Shipped` $\to$ `Delivered`). |
+| `GET` / `PUT` | `/api/admin/payments.php` | Admin | Audit payment transactions and override statuses. |
+| `GET` / `DELETE` | `/api/admin/users.php` | Admin | Manage user accounts and roles. |
+| `GET` | `/api/admin/migrate.php` | Admin | Comprehensive database seeding script. |
+
+### Redirection Services (`api/redirect/`)
+| Method | Endpoint | Auth | Description |
+|:---|:---|:---:|:---|
+| `GET` | `/api/redirect/privacy.php` | No | HTTP 302 redirect to active Privacy Policy URL configured in Admin Settings. |
+| `GET` | `/api/redirect/delivery-returns.php` | No | HTTP 302 redirect to active Delivery & Returns URL configured in Admin Settings. |
 
 ---
 
-### 6. Admin Control Room (`api/admin/`)
-*All endpoints in this group require `Authorization: Bearer <token>` and `role: admin`.*
+## Local Development & Testing
 
-| Method | Endpoint | Description |
-|:---|:---|:---|
-| `POST` | `/api/admin/product.php` | Create a new catalog product (SKU, title, price, stock, category). |
-| `PUT` | `/api/admin/product.php/{id}` | Update existing product details, inventory stock levels, or pricing. |
-| `DELETE` | `/api/admin/product.php/{id}` | Remove a product from the catalog. |
-| `POST` | `/api/admin/category.php` | Create a new product category. |
-| `PUT` | `/api/admin/category.php/{id}` | Rename or update an existing category. |
-| `DELETE` | `/api/admin/category.php/{id}` | Delete a category. |
-| `GET` | `/api/admin/orders.php` | List all customer orders across the platform with customer details. |
-| `PUT` | `/api/admin/orders.php/{id}` | Update fulfillment status (`Pending` $\to$ `Shipped` $\to$ `Delivered` $\to$ `Cancelled`). |
-| `GET` | `/api/admin/user-orders.php?user_id={id}` | Retrieve complete order history for a specific customer. |
-| `GET` | `/api/admin/payments.php` | Audit all payment transactions, gateways, and settlements. |
-| `PUT` | `/api/admin/payments.php/{id}` | Update payment transaction status (`Pending`, `Completed`, `Failed`). |
-| `GET` | `/api/admin/users.php` | List all registered user accounts with roles and registration dates. |
-| `PUT` | `/api/admin/users.php/{id}` | Update user roles (e.g., promote customer to `admin`). |
-| `DELETE` | `/api/admin/users.php/{id}` | Delete a customer account (Root superadmin account is shielded). |
-| `GET` | `/api/admin/subscribers.php` | List all active trade newsletter subscribers with registration dates. |
-| `DELETE` | `/api/admin/subscribers.php/{id}` | Unsubscribe or remove a newsletter subscriber. |
-| `GET` | `/api/admin/reports.php/monthly-sales` | Monthly revenue aggregate report. |
-| `GET` | `/api/admin/reports.php/top-customers` | Leaderboard of top 5 customers by lifetime order spend. |
-| `GET` | `/api/admin/reports.php/low-stock` | Inventory alert list of all items with stock fewer than 10 units. |
-| `GET` | `/api/admin/migrate.php` | Database schema self-healing & maintenance migration script. |
-
----
-
-## Authentication & Authorization Header
-
-Protected endpoints require the standard HTTP Bearer token header:
-
-```http
-Authorization: Bearer <your_jwt_token_here>
-```
-
-Tokens are signed using `HMAC-SHA256` in `config/jwt.php` and contain the user payload:
-```json
-{
-  "user_id": 1,
-  "email": "admin@shopit.ng",
-  "role": "admin",
-  "exp": 1740000000
-}
-```
-
----
-
-## Health Check Endpoint
-
-```http
-GET http://localhost/ecommerce-api/index.php
-```
-
-Response:
-```json
-{
-  "status": "online",
-  "service": "ShopIt REST API",
-  "version": "1.0.0",
-  "message": "ShopIt backend is operational",
-  "endpoints": {
-    "products": "/api/products/products.php",
-    "categories": "/api/categories/categories.php",
-    "stats": "/api/stats/overview.php",
-    "users": "/api/users/profile.php",
-    "orders": "/api/users/orders.php"
-  }
-}
+```powershell
+# Check PHP syntax across all endpoints
+C:\xampp\php\php.exe -l index.php
+C:\xampp\php\php.exe -l api/storefront/init.php
+C:\xampp\php\php.exe -l api/admin/init.php
+C:\xampp\php\php.exe -l api/admin/migrate.php
 ```

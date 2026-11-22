@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
-require_once '../../config/db.php';
-require_once '../../config/ensure_schema.php';
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../config/ensure_schema.php';
 
 // Ensure all database schemas, tables, and admin credentials are fully initialized
 ensureAllSchemas($conn);
@@ -18,7 +18,12 @@ $categoriesList = [
     'Tops & Fashion',
     'Gym & Fitness Equipment',
     'Makeup & Beauty Care',
-    'Kitchen Utensils & Cookware'
+    'Kitchen Utensils & Cookware',
+    'Solar & Renewable Power',
+    'Industrial Tools & Hardware',
+    'Commercial Lighting & Electrical',
+    'Safety Gear & Workwear',
+    'Cleaning & Sanitation Supplies'
 ];
 
 $catMap = [];
@@ -275,19 +280,165 @@ $productsData = [
         'image' => 'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80',
         'price' => 36000.00,
         'stock' => 60,
-        'cat' => 'Kitchen Utensils & Cookware'
+        'cat' => 'Kitchen Utensils & Cookware',
+        'date_added' => '2024-10-14 11:20:00'
+    ],
+
+    // Solar & Renewable Power
+    [
+        'name' => '5.5kVA / 48V Pure Sine Wave Hybrid Solar Inverter',
+        'desc' => 'Integrated 100A MPPT charge controller, dual AC output priority for uninterrupted operations, Wi-Fi smart app monitoring.',
+        'image' => 'https://images.unsplash.com/photo-1508873696983-2df5293cb395?auto=format&fit=crop&w=800&q=80',
+        'price' => 780000.00,
+        'stock' => 14,
+        'cat' => 'Solar & Renewable Power',
+        'date_added' => '2024-10-18 09:30:00'
+    ],
+    [
+        'name' => 'Felicity 48V 100Ah 5.12kWh LiFePO4 Lithium Battery Wall-Mount',
+        'desc' => '6,000+ deep cycles at 80% DOD, built-in intelligent battery management system (BMS), high current circuit breaker and LCD display.',
+        'image' => 'https://images.unsplash.com/photo-1558441719-8b489c63f7d1?auto=format&fit=crop&w=800&q=80',
+        'price' => 1250000.00,
+        'stock' => 9,
+        'cat' => 'Solar & Renewable Power',
+        'date_added' => '2024-10-24 14:15:00'
+    ],
+    [
+        'name' => '550W Tier-1 Monocrystalline Half-Cell Solar Panel (Pack of 4)',
+        'desc' => 'High-efficiency PERC solar cells with anti-soiling tempered glass, IP68 rated waterproof junction box, 25-year performance warranty.',
+        'image' => 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=800&q=80',
+        'price' => 460000.00,
+        'stock' => 25,
+        'cat' => 'Solar & Renewable Power',
+        'date_added' => '2024-11-05 10:45:00'
+    ],
+
+    // Industrial Tools & Hardware
+    [
+        'name' => 'DeWalt Heavy-Duty 20V MAX Brushless Cordless Drill Combo Kit',
+        'desc' => 'Includes 2x 4.0Ah XR Li-Ion battery packs, rapid smart charger, variable 2-speed transmission, and heavy molded hard case.',
+        'image' => 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=80',
+        'price' => 245000.00,
+        'stock' => 18,
+        'cat' => 'Industrial Tools & Hardware',
+        'date_added' => '2024-10-02 08:30:00'
+    ],
+    [
+        'name' => '6-Drawer Rolling Industrial Steel Workshop Tool Chest Cabinet',
+        'desc' => 'Reinforced tubular steel framework, central keyed lock, smooth ball-bearing slides, and 5-inch heavy-duty swivel locking casters.',
+        'image' => 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
+        'price' => 380000.00,
+        'stock' => 8,
+        'cat' => 'Industrial Tools & Hardware',
+        'date_added' => '2024-10-28 16:20:00'
+    ],
+    [
+        'name' => '250A Portable Digital Inverter IGBT ARC/MMA Welding Machine',
+        'desc' => 'Digital LED display, adaptive hot start and arc force control, anti-stick electrode technology, includes electrode holder and cables.',
+        'image' => 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+        'price' => 115000.00,
+        'stock' => 22,
+        'cat' => 'Industrial Tools & Hardware',
+        'date_added' => '2024-11-12 13:10:00'
+    ],
+
+    // Commercial Lighting & Electrical
+    [
+        'name' => '200W Heavy-Duty Industrial LED High Bay Warehouse UFO Light',
+        'desc' => '28,000 Lumens output, 6500K daylight white, IP65 waterproof rated die-cast aluminum heat-dissipating housing with hanging hook.',
+        'image' => 'https://images.unsplash.com/photo-1524484485831-a92ffc0de03f?auto=format&fit=crop&w=800&q=80',
+        'price' => 62000.00,
+        'stock' => 50,
+        'cat' => 'Commercial Lighting & Electrical',
+        'date_added' => '2024-10-10 12:00:00'
+    ],
+    [
+        'name' => '120W Integrated All-in-One Solar LED Street Light with Radar Sensor',
+        'desc' => 'Monocrystalline solar module, dusk-to-dawn intelligent controller, PIR motion radar sensor, and heavy steel mounting bracket.',
+        'image' => 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80',
+        'price' => 85000.00,
+        'stock' => 35,
+        'cat' => 'Commercial Lighting & Electrical',
+        'date_added' => '2024-10-26 15:45:00'
+    ],
+
+    // Safety Gear & Workwear
+    [
+        'name' => 'Steel-Toe Kevlar Anti-Puncture Heavy Industrial Safety Work Boots',
+        'desc' => '200J impact-resistant steel toe cap, ballistic Kevlar puncture-resistant midsole, oil-resistant anti-skid rubber lug outsole.',
+        'image' => 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+        'price' => 48000.00,
+        'stock' => 40,
+        'cat' => 'Safety Gear & Workwear',
+        'date_added' => '2024-11-01 10:15:00'
+    ],
+    [
+        'name' => 'High-Visibility ANSI Class 3 Reflective Safety Vest with Pockets (10-Pack)',
+        'desc' => 'Breathable fluorescent yellow mesh, 2-inch wide 360-degree reflective bands, ID card holder and heavy-duty zipper closure.',
+        'image' => 'https://images.unsplash.com/photo-1578873375969-d71a8f9f0907?auto=format&fit=crop&w=800&q=80',
+        'price' => 32000.00,
+        'stock' => 65,
+        'cat' => 'Safety Gear & Workwear',
+        'date_added' => '2024-11-09 17:30:00'
+    ],
+
+    // Cleaning & Sanitation Supplies
+    [
+        'name' => 'Commercial 30-Litre Wet & Dry Stainless Steel Industrial Vacuum',
+        'desc' => '1400W pure copper motor, stainless steel corrosion-free barrel, multi-surface squeegee nozzles, and washable HEPA filtration.',
+        'image' => 'https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=800&q=80',
+        'price' => 135000.00,
+        'stock' => 16,
+        'cat' => 'Cleaning & Sanitation Supplies',
+        'date_added' => '2024-10-15 14:00:00'
+    ],
+    [
+        'name' => 'Touchless Automatic Wall-Mounted Sanitizer Dispenser (4-Pack)',
+        'desc' => '1000ml refillable reservoir, fast infrared hands-free sensor, low-battery alert, compatible with gel and liquid disinfectants.',
+        'image' => 'https://images.unsplash.com/photo-1584744982491-665216d95f8b?auto=format&fit=crop&w=800&q=80',
+        'price' => 58000.00,
+        'stock' => 45,
+        'cat' => 'Cleaning & Sanitation Supplies',
+        'date_added' => '2024-11-07 09:20:00'
+    ],
+
+    // Additional Food & Gadgets
+    [
+        'name' => '50kg Premium Stone-Free Royal Parboiled Rice Bag',
+        'desc' => 'Organically grown, double-cleaned long grain parboiled rice with optimal swelling volume, non-sticky and nutrient-rich.',
+        'image' => 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=800&q=80',
+        'price' => 95000.00,
+        'stock' => 80,
+        'cat' => 'Food & Provisions',
+        'date_added' => '2024-11-16 08:30:00'
+    ],
+    [
+        'name' => 'Anker 737 Power Bank (PowerCore 24K) 140W Ultra-Fast Charger',
+        'desc' => '24,000mAh capacity, 140W two-way fast charging, smart digital display showing output wattage and recharge duration.',
+        'image' => 'https://images.unsplash.com/photo-1609592424368-e4b2d3989146?auto=format&fit=crop&w=800&q=80',
+        'price' => 110000.00,
+        'stock' => 30,
+        'cat' => 'Gadgets & Electronics',
+        'date_added' => '2024-11-15 11:00:00'
     ]
 ];
 
-$stmtP = $conn->prepare("INSERT INTO products (product_name, description, image_url, price, stock_quantity, category_id) VALUES (?, ?, ?, ?, ?, ?)");
+$stmtP = $conn->prepare("INSERT INTO products (product_name, description, image_url, price, stock_quantity, category_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
 $prodCount = 0;
 foreach ($productsData as $np) {
     $pName = mysqli_real_escape_string($conn, $np['name']);
-    $chkProd = mysqli_query($conn, "SELECT product_id FROM products WHERE product_name = '{$pName}'");
-    if ($chkProd && mysqli_num_rows($chkProd) === 0) {
-        $catId = $catMap[$np['cat']] ?? null;
+    $chkProd = mysqli_query($conn, "SELECT product_id, created_at FROM products WHERE product_name = '{$pName}'");
+    $catId = $catMap[$np['cat']] ?? null;
+    $createdAt = $np['date_added'] ?? date('Y-m-d H:i:s');
+    if ($chkProd && $rowP = mysqli_fetch_assoc($chkProd)) {
+        if (!empty($np['date_added'])) {
+            $updDate = $conn->prepare("UPDATE products SET created_at = ? WHERE product_id = ?");
+            $updDate->bind_param("si", $createdAt, $rowP['product_id']);
+            $updDate->execute();
+        }
+    } else {
         if ($stmtP) {
-            $stmtP->bind_param("sssdis", $np['name'], $np['desc'], $np['image'], $np['price'], $np['stock'], $catId);
+            $stmtP->bind_param("sssdiis", $np['name'], $np['desc'], $np['image'], $np['price'], $np['stock'], $catId, $createdAt);
             $stmtP->execute();
             $prodCount++;
         }
@@ -362,6 +513,86 @@ $customers = [
         'password'   => 'Customer@123',
         'ref_code'   => 'DAM-IBD08',
         'referrer'   => null
+    ],
+    [
+        'first_name' => 'Chukwudi',
+        'last_name'  => 'Okafor',
+        'email'      => 'chukwudi.okafor@enugutrade.ng',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'CHU-ENU09',
+        'referrer'   => 'emeka.nwosu@apexventures.ng'
+    ],
+    [
+        'first_name' => 'Ngozi',
+        'last_name'  => 'Adeleke',
+        'email'      => 'ngozi.adeleke@lagosmarkets.com',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'NGO-LAG10',
+        'referrer'   => 'bolanle.adeyemi@lagosboutique.ng'
+    ],
+    [
+        'first_name' => 'Babatunde',
+        'last_name'  => 'Fashola',
+        'email'      => 'babatunde.fashola@ikejawholesale.ng',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'BAB-IKJ11',
+        'referrer'   => 'emeka.nwosu@apexventures.ng'
+    ],
+    [
+        'first_name' => 'Zainab',
+        'last_name'  => 'Usman',
+        'email'      => 'zainab.usman@kadunavendors.org',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'ZAI-KAD12',
+        'referrer'   => 'fatima.garba@kanotrade.org'
+    ],
+    [
+        'first_name' => 'Kelechi',
+        'last_name'  => 'Iheanacho',
+        'email'      => 'kelechi.iheanacho@phccommerce.ng',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'KEL-PHC13',
+        'referrer'   => 'chidinma.eze@onitshamarket.com'
+    ],
+    [
+        'first_name' => 'Halima',
+        'last_name'  => 'Abubakar',
+        'email'      => 'halima.abubakar@abujaretail.com',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'HAL-ABJ14',
+        'referrer'   => 'amina.bello@abujaenterprises.com'
+    ],
+    [
+        'first_name' => 'Osasogie',
+        'last_name'  => 'Igbinedion',
+        'email'      => 'osasogie.igbinedion@benincommercial.ng',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'OSA-BEN15',
+        'referrer'   => 'tunde.bakare@ibadanlogistics.ng'
+    ],
+    [
+        'first_name' => 'Blessing',
+        'last_name'  => 'Bassey',
+        'email'      => 'blessing.bassey@calabarstores.com',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'BLE-CAL16',
+        'referrer'   => 'chukwudi.okafor@enugutrade.ng'
+    ],
+    [
+        'first_name' => 'Tariq',
+        'last_name'  => 'Danjuma',
+        'email'      => 'tariq.danjuma@josenterprises.ng',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'TAR-JOS17',
+        'referrer'   => 'khalid.adamu@sokototrade.ng'
+    ],
+    [
+        'first_name' => 'Yetunde',
+        'last_name'  => 'Sowore',
+        'email'      => 'yetunde.sowore@abeokutatrade.com',
+        'password'   => 'Customer@123',
+        'ref_code'   => 'YET-ABE18',
+        'referrer'   => 'bolanle.adeyemi@lagosboutique.ng'
     ]
 ];
 
@@ -394,7 +625,17 @@ $sampleCoupons = [
     ['email' => 'amina.bello@abujaenterprises.com', 'code' => 'WELCOME20-AMIN', 'discount' => 20.00, 'min_items' => 3, 'used' => 1],
     ['email' => 'amina.bello@abujaenterprises.com', 'code' => 'REF5-REWARD2',   'discount' => 5.00,  'min_items' => 2, 'used' => 0],
     ['email' => 'tunde.bakare@ibadanlogistics.ng', 'code' => 'WELCOME20-TUND', 'discount' => 20.00, 'min_items' => 3, 'used' => 0],
-    ['email' => 'fatima.garba@kanotrade.org', 'code' => 'PROMO10-KANOTRADE', 'discount' => 10.00, 'min_items' => 2, 'used' => 0]
+    ['email' => 'fatima.garba@kanotrade.org', 'code' => 'PROMO10-KANOTRADE', 'discount' => 10.00, 'min_items' => 2, 'used' => 0],
+    ['email' => 'chukwudi.okafor@enugutrade.ng', 'code' => 'WELCOME20-CHUK', 'discount' => 20.00, 'min_items' => 3, 'used' => 0],
+    ['email' => 'ngozi.adeleke@lagosmarkets.com', 'code' => 'REF5-REWARD3',   'discount' => 5.00,  'min_items' => 2, 'used' => 0],
+    ['email' => 'babatunde.fashola@ikejawholesale.ng', 'code' => 'BIZ15-IKEJA', 'discount' => 15.00, 'min_items' => 4, 'used' => 1],
+    ['email' => 'zainab.usman@kadunavendors.org', 'code' => 'WELCOME20-ZAIN', 'discount' => 20.00, 'min_items' => 3, 'used' => 0],
+    ['email' => 'kelechi.iheanacho@phccommerce.ng', 'code' => 'OILCITY10-PHC', 'discount' => 10.00, 'min_items' => 2, 'used' => 0],
+    ['email' => 'halima.abubakar@abujaretail.com', 'code' => 'FCTEXPRESS-HAL', 'discount' => 10.00, 'min_items' => 2, 'used' => 0],
+    ['email' => 'osasogie.igbinedion@benincommercial.ng', 'code' => 'WELCOME20-OSAS', 'discount' => 20.00, 'min_items' => 3, 'used' => 0],
+    ['email' => 'blessing.bassey@calabarstores.com', 'code' => 'CALABARPROMO', 'discount' => 15.00, 'min_items' => 2, 'used' => 0],
+    ['email' => 'tariq.danjuma@josenterprises.ng', 'code' => 'PLATEAUTRADE5', 'discount' => 5.00, 'min_items' => 2, 'used' => 0],
+    ['email' => 'yetunde.sowore@abeokutatrade.com', 'code' => 'ROCKCITY-YET', 'discount' => 10.00, 'min_items' => 3, 'used' => 0]
 ];
 
 $stmtCp = $conn->prepare("INSERT INTO coupons (user_id, code, discount_percent, min_items, is_used, expires_at) VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))");
@@ -480,6 +721,86 @@ $sampleOrders = [
         'date' => date('Y-m-d H:i:s', strtotime('-10 days')),
         'address' => '22 Bodija Estate, Ibadan, Oyo State',
         'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'chukwudi.okafor@enugutrade.ng',
+        'amount' => 415000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-14 days')),
+        'address' => '14 Ogui Road, Commercial Area, Enugu State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'ngozi.adeleke@lagosmarkets.com',
+        'amount' => 185000.00,
+        'status' => 'Processing',
+        'date' => date('Y-m-d H:i:s', strtotime('-6 hours')),
+        'address' => '32 Marina Street, Lagos Island, Lagos State',
+        'method' => 'Credit Card'
+    ],
+    [
+        'email' => 'babatunde.fashola@ikejawholesale.ng',
+        'amount' => 620000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-30 days')),
+        'address' => 'Plot 5 Commercial Avenue, Ikeja GRA, Lagos State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'zainab.usman@kadunavendors.org',
+        'amount' => 95000.00,
+        'status' => 'Shipped',
+        'date' => date('Y-m-d H:i:s', strtotime('-1 day')),
+        'address' => '27 Ahmadu Bello Way, Kaduna Central, Kaduna State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'kelechi.iheanacho@phccommerce.ng',
+        'amount' => 540000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-22 days')),
+        'address' => '88 Trans-Amadi Industrial Layout, Port Harcourt, Rivers State',
+        'method' => 'Credit Card'
+    ],
+    [
+        'email' => 'halima.abubakar@abujaretail.com',
+        'amount' => 135000.00,
+        'status' => 'Pending',
+        'date' => date('Y-m-d H:i:s', strtotime('-4 hours')),
+        'address' => 'Plot 12 Adetokunbo Ademola Crescent, Wuse II, Abuja, FCT',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'osasogie.igbinedion@benincommercial.ng',
+        'amount' => 295000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-12 days')),
+        'address' => '19 Airport Road, GRA, Benin City, Edo State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'blessing.bassey@calabarstores.com',
+        'amount' => 76000.00,
+        'status' => 'Shipped',
+        'date' => date('Y-m-d H:i:s', strtotime('-3 days')),
+        'address' => '42 Marian Road, Calabar, Cross River State',
+        'method' => 'Credit Card'
+    ],
+    [
+        'email' => 'tariq.danjuma@josenterprises.ng',
+        'amount' => 165000.00,
+        'status' => 'Cancelled',
+        'date' => date('Y-m-d H:i:s', strtotime('-8 days')),
+        'address' => '11 Yakubu Gowon Way, Jos, Plateau State',
+        'method' => 'Bank Transfer'
+    ],
+    [
+        'email' => 'yetunde.sowore@abeokutatrade.com',
+        'amount' => 320000.00,
+        'status' => 'Delivered',
+        'date' => date('Y-m-d H:i:s', strtotime('-7 days')),
+        'address' => '8 Lalubu Street, Oke-Ilewo, Abeokuta, Ogun State',
+        'method' => 'Credit Card'
     ]
 ];
 

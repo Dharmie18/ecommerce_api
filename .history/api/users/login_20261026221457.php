@@ -1,0 +1,75 @@
+<?php
+
+// initial setup nd dependencies
+header('Content-Type: application/json');
+require '../../config/db.php';
+require '../../config/jwt.php';
+require_once '../../config/ensure_schema.php';
+require_once '../../config/mailer.php';
+
+ensureAllSchemas($conn);
+
+// input validation
+$data = json_decode(file_get_contents("php://input"), true);
+
+$email    = trim($data['email'] ?? '');
+$password = $data['password'] ?? '';
+
+if (empty($email) || empty($password)) {
+    http_response_code(400);
+    echo json_encode(["error" => "Email and password are required"]);
+    exit;
+}
+
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(400);
+    echo json_encode(["error" => "Invalid email format"]);
+    exit;
+}
+
+
+$stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password_hash, password, role, is_verified, referral_code FROM users WHERE email = ?");
+if (!$stmt) {
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password_hash, role, is_verified, referral_code FROM users WHERE email = ?");
+}
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result ? $result->fetch_assoc() : null;
+
+$storedHash = !empty($user['password_hash']) ? $user['password_hash'] : ($user['password'] ?? '');
+
+if ($user && !empty($storedHash) && password_verify($password, $storedHash)) {
+    $token = generateJWT($user['user_id']);
+
+    // ========================================================================
+    // 4. SECURITY LOGIN ALERT DISPATCH
+    // ========================================================================
+    try {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown IP';
+        $timeStr = date('F j, Y - g:i A') . ' UTC';
+        $loginHtml = getLoginAlertEmailHtml($user['first_name'], $user['email'], $timeStr, $ip);
+        sendShopItEmail($user['email'], $user['first_name'], "Security Alert: New Sign-In to Your ShopIt Account", $loginHtml);
+    } catch (Exception $e) {
+        // Non-blocking: Mail exception should not prevent successful authentication
+    }
+
+    // ========================================================================
+    // 5. AUTHENTICATION SUCCESS & TOKEN ISSUANCE
+    // ========================================================================
+    echo json_encode([
+        "message" => "Login successful",
+        "token" => $token,
+        "user_id" => $user['user_id'],
+        "first_name" => $user['first_name'],
+        "last_name" => $user['last_name'],
+        "email" => $user['email'],
+        "role" => $user['role'],
+        "is_verified" => (bool)($user['is_verified'] ?? 0),
+        "referral_code" => $user['referral_code'] ?? null
+    ]);
+} else {
+    http_response_code(401);
+    echo json_encode(["error" => "Invalid email or password"]);
+}
+?>

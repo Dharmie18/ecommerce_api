@@ -43,7 +43,9 @@ if ($method === 'PUT') {
         'social_instagram',
         'social_facebook',
         'social_linkedin',
-        'social_whatsapp'
+        'social_whatsapp',
+        'privacy_policy_url',
+        'delivery_returns_url'
     ];
 
     $stmt = $conn->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");

@@ -77,12 +77,55 @@ try {
         'total_subscribers'  => (int)$subStats['total_subscribers']
     ];
 
+    // Fetch real past orders from database for live storefront dispatch showcase
+    $dispatchQuery = "
+        SELECT 
+            o.order_id, 
+            o.total_amount, 
+            o.order_status, 
+            o.order_date, 
+            o.shipping_address,
+            COALESCE((
+                SELECT p.product_name 
+                FROM order_items oi 
+                JOIN products p ON oi.product_id = p.product_id 
+                WHERE oi.order_id = o.order_id 
+                LIMIT 1
+            ), 'Direct Wholesale Order') AS item_summary
+        FROM orders o
+        WHERE o.order_status != 'Cancelled'
+        ORDER BY o.order_date DESC, o.order_id DESC
+        LIMIT 10
+    ";
+    $dispatchRes = $conn->query($dispatchQuery);
+    $recentDispatches = [];
+    if ($dispatchRes) {
+        while ($d = $dispatchRes->fetch_assoc()) {
+            $addr = trim($d['shipping_address'] ?? '');
+            $addrParts = explode(',', $addr);
+            $cleanCity = count($addrParts) >= 2 
+                ? trim($addrParts[count($addrParts) - 2]) . ', ' . trim(end($addrParts))
+                : ($addr !== '' ? $addr : 'Lagos, Nigeria');
+
+            $recentDispatches[] = [
+                'order_id'     => (int)$d['order_id'],
+                'order_number' => 'SHP-' . str_pad($d['order_id'], 4, '0', STR_PAD_LEFT),
+                'city'         => $cleanCity,
+                'status'       => $d['order_status'],
+                'amount'       => (float)$d['total_amount'],
+                'item_summary' => $d['item_summary'],
+                'order_date'   => $d['order_date']
+            ];
+        }
+    }
+
     // Return combined bootstrap response in a single payload
     echo json_encode([
-        'settings'   => $settings,
-        'categories' => $categories,
-        'products'   => $products,
-        'stats'      => $stats
+        'settings'          => $settings,
+        'categories'        => $categories,
+        'products'          => $products,
+        'stats'             => $stats,
+        'recent_dispatches' => $recentDispatches
     ]);
 
 } catch (Exception $e) {

@@ -121,7 +121,7 @@ function ensureUserReferralColumns(mysqli $conn): void
         'referral_code' => "ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE AFTER role",
         'referred_by_id' => "ALTER TABLE users ADD COLUMN referred_by_id INT NULL AFTER referral_code",
     ];
-
+x
     foreach ($columns as $column => $statement) {
         $check = $conn->query("SHOW COLUMNS FROM users LIKE '{$column}'");
         if ($check !== false && $check->num_rows === 0) {
@@ -315,7 +315,9 @@ function ensureSettingsTable(mysqli $conn): void
         'social_instagram'  => 'https://instagram.com/shopit_ng',
         'social_facebook'   => 'https://facebook.com/shopit_ng',
         'social_linkedin'   => 'https://linkedin.com/company/shopit-ng',
-        'social_whatsapp'   => 'https://wa.me/234800746748'
+        'social_whatsapp'   => 'https://wa.me/234800746748',
+        'privacy_policy_url'   => '',
+        'delivery_returns_url' => ''
     ];
 
     $checkStmt = $conn->prepare("SELECT setting_key FROM site_settings WHERE setting_key = ?");
@@ -342,18 +344,20 @@ function getSiteSettings(mysqli $conn): array
     }
 
     return [
-        'company_name'    => $raw['company_name'] ?? 'ShopIt',
-        'tagline'         => $raw['tagline'] ?? 'Direct Retail & Wholesale Marketplace for Nigeria',
-        'logo_url'        => $raw['logo_url'] ?? '/favicon.png',
-        'support_phone'   => $raw['support_phone'] ?? '+234 800 746 748',
-        'whatsapp_number' => $raw['whatsapp_number'] ?? '+234800746748',
-        'primary_email'   => $raw['primary_email'] ?? 'support@shopit.ng',
-        'office_address'  => $raw['office_address'] ?? 'Plot 14B, Commercial Avenue, Ikeja, Lagos State, Nigeria',
-        'rc_number'       => $raw['rc_number'] ?? 'RC: 1894203',
-        'currency_symbol' => $raw['currency_symbol'] ?? '₦',
-        'currency_code'   => $raw['currency_code'] ?? 'NGN',
-        'vat_percent'     => floatval($raw['vat_percent'] ?? 7.5),
-        'socials'         => [
+        'company_name'         => $raw['company_name'] ?? 'ShopIt',
+        'tagline'              => $raw['tagline'] ?? 'Direct Retail & Wholesale Marketplace for Nigeria',
+        'logo_url'             => $raw['logo_url'] ?? '/favicon.png',
+        'support_phone'        => $raw['support_phone'] ?? '+234 800 746 748',
+        'whatsapp_number'      => $raw['whatsapp_number'] ?? '+234800746748',
+        'primary_email'        => $raw['primary_email'] ?? 'support@shopit.ng',
+        'office_address'       => $raw['office_address'] ?? 'Plot 14B, Commercial Avenue, Ikeja, Lagos State, Nigeria',
+        'rc_number'            => $raw['rc_number'] ?? 'RC: 1894203',
+        'currency_symbol'      => $raw['currency_symbol'] ?? '₦',
+        'currency_code'        => $raw['currency_code'] ?? 'NGN',
+        'vat_percent'          => floatval($raw['vat_percent'] ?? 7.5),
+        'privacy_policy_url'   => $raw['privacy_policy_url'] ?? '',
+        'delivery_returns_url' => $raw['delivery_returns_url'] ?? '',
+        'socials'              => [
             'twitter'   => $raw['social_twitter'] ?? 'https://x.com/shopit_ng',
             'instagram' => $raw['social_instagram'] ?? 'https://instagram.com/shopit_ng',
             'facebook'  => $raw['social_facebook'] ?? 'https://facebook.com/shopit_ng',
