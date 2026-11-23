@@ -121,7 +121,7 @@ function ensureUserReferralColumns(mysqli $conn): void
         'referral_code' => "ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE AFTER role",
         'referred_by_id' => "ALTER TABLE users ADD COLUMN referred_by_id INT NULL AFTER referral_code",
     ];
-x
+
     foreach ($columns as $column => $statement) {
         $check = $conn->query("SHOW COLUMNS FROM users LIKE '{$column}'");
         if ($check !== false && $check->num_rows === 0) {
