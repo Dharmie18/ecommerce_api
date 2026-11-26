@@ -32,6 +32,10 @@ function ensureUsersTable(mysqli $conn): void
         $conn->query("ALTER TABLE users ADD COLUMN password VARCHAR(255) NULL AFTER password_hash");
     }
 
+    // Ensure password and password_hash are nullable with default NULL to prevent strict mode issues
+    $conn->query("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL DEFAULT NULL");
+    $conn->query("ALTER TABLE users MODIFY COLUMN password_hash VARCHAR(255) NULL DEFAULT NULL");
+
     // Seed administrator accounts requested by user
     $adminsToSeed = [
         [

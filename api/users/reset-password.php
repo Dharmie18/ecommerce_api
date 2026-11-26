@@ -59,8 +59,16 @@ if (!$resetRecord) {
 
 // Hash new password and update user
 $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
-$updateUser = $conn->prepare("UPDATE users SET password_hash = ? WHERE email = ?");
-$updateUser->bind_param("ss", $password_hash, $email);
+$chkPassCol = $conn->query("SHOW COLUMNS FROM users LIKE 'password'");
+$hasPasswordCol = ($chkPassCol !== false && $chkPassCol->num_rows > 0);
+
+if ($hasPasswordCol) {
+    $updateUser = $conn->prepare("UPDATE users SET password_hash = ?, password = ? WHERE email = ?");
+    $updateUser->bind_param("sss", $password_hash, $password_hash, $email);
+} else {
+    $updateUser = $conn->prepare("UPDATE users SET password_hash = ? WHERE email = ?");
+    $updateUser->bind_param("ss", $password_hash, $email);
+}
 
 if ($updateUser->execute()) {
     // Invalidate reset code

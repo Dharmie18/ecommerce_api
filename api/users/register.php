@@ -114,8 +114,16 @@ $is_verified = 0;
 // ============================================================================
 // 5. ACCOUNT CREATION & DATABASE INSERTION
 // ============================================================================
-$stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash, referral_code, referred_by_id, is_verified, verification_token, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
-$stmt->bind_param("sssssiis", $first_name, $last_name, $email, $password_hash, $my_referral_code, $referred_by_id, $is_verified, $verification_token);
+$chkPassCol = $conn->query("SHOW COLUMNS FROM users LIKE 'password'");
+$hasPasswordCol = ($chkPassCol !== false && $chkPassCol->num_rows > 0);
+
+if ($hasPasswordCol) {
+    $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash, password, referral_code, referred_by_id, is_verified, verification_token, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
+    $stmt->bind_param("ssssssiis", $first_name, $last_name, $email, $password_hash, $password_hash, $my_referral_code, $referred_by_id, $is_verified, $verification_token);
+} else {
+    $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password_hash, referral_code, referred_by_id, is_verified, verification_token, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
+    $stmt->bind_param("sssssiis", $first_name, $last_name, $email, $password_hash, $my_referral_code, $referred_by_id, $is_verified, $verification_token);
+}
 
 if ($stmt->execute()) {
     $new_user_id = $stmt->insert_id;
